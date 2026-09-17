@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import styles from "./UploadForm.module.css";
 import {
   branches,
@@ -43,6 +43,13 @@ export default function UploadFormPYQ({ uploadFn }) {
     return selectedValues.files.map((file) => URL.createObjectURL(file));
   }, [selectedValues.files, detectedType]);
 
+  // Revoke object URLs on change/unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      thumbnailUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [thumbnailUrls]);
+
   function handleDragStart(e, index) {
     setDragIndex(index);
   }
@@ -61,10 +68,13 @@ export default function UploadFormPYQ({ uploadFn }) {
   if (selectedValues.semester && selectedValues.branch) {
     const sem = selectedValues.semester;
     const branch = selectedValues.branch;
-    subjectsToShow.push(
-      ["ALL SUBJECTS", "All"],
-      ...subjects[branch][ordinals[sem]],
-    );
+    const branchSubjects =
+      Number(sem) <= 2
+        ? subjects.CommonForAllBranches?.[ordinals[sem]]
+        : subjects[branch]?.[ordinals[sem]];
+    if (branchSubjects) {
+      subjectsToShow.push(...branchSubjects);
+    }
   }
 
   // Handle file selection — auto-detect type

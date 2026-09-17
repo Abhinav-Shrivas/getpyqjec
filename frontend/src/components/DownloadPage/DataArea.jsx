@@ -13,23 +13,18 @@ export default function DataArea({ url }) {
   // Take the first file from the array
   const file = url;
 
-  async function downloadFile(url, filename) {
+  function downloadFile(fileUrl, filename) {
     try {
       setIsDownloading(true);
       setIsComplete(false);
       setError(false);
 
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
       const link = document.createElement("a");
-      link.href = blobUrl;
+      link.href = fileUrl;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
 
       setIsDownloading(false);
       setIsComplete(true);

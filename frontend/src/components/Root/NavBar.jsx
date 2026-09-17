@@ -15,6 +15,7 @@ export default function NavBar() {
     navigate("/");
   }
   useEffect(() => {
+    if (!showDropdown) return;
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowDropdown(false);
@@ -22,7 +23,7 @@ export default function NavBar() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [showDropdown]);
   return (
     <nav className={classes.navbar}>
       <NavLink to="" className={() => classes["download-link"]}>

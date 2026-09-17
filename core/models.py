@@ -46,3 +46,28 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def __str__(self):
         return self.rno
+    
+
+#PYQ Model
+class PYQ(models.Model):
+    branch = models.CharField(max_length=10)
+    semester = models.IntegerField()
+    subject_code = models.CharField(max_length=20)
+    year = models.IntegerField()
+    exam_session = models.CharField(max_length=10)
+    drive_file_id = models.CharField(max_length=100)
+    drive_download_url = models.URLField()
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "PYQ"
+        verbose_name_plural = "PYQs"
+        unique_together = ('branch', 'semester', 'subject_code', 'year', 'exam_session')
+        ordering = ['subject_code', 'year', 'exam_session']
+        indexes = [
+            models.Index(fields=['branch', 'semester', 'year'], name='pyq_lookup_idx'),
+        ]
+        
+    def __str__(self):
+        return f"{self.branch}/sem{self.semester}/{self.subject_code}/{self.year}_{self.exam_session}"

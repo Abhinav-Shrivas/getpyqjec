@@ -55,7 +55,9 @@ const uploadData = async (data) => {
         body: data,
       });
     } else {
-      // Refresh token also expired → force logout
+      // Refresh token also expired → force logout and clear stale auth
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
       throw new Error("Session expired. Please login again.");
     }
   }

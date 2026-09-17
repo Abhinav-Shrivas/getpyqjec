@@ -1,14 +1,17 @@
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import DownloadPage from "./components/DownloadPage/DownloadPage";
-import UploadDataPage from "./components/UploadPage/UploadPage";
 import RootLayout from "./components/Root/Root";
-import LoginForm from "./components/LoginForm/LoginForm";
+import LoginForm, { action as loginAction } from "./components/LoginForm/LoginForm";
 import ErrorPage from "./components/ErrorPage/Error";
-import ForgotPassword from "./components/ForgotPassword/ForgotPassword";
-import ResetPassword from "./components/ResetPassword/ResetPassword";
 import { AuthProvider } from "./store/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
-import { action as loginAction } from "./components/LoginForm/LoginForm";
+
+const UploadDataPage = lazy(() => import("./components/UploadPage/UploadPage"));
+const ForgotPassword = lazy(() => import("./components/ForgotPassword/ForgotPassword"));
+const ResetPassword = lazy(() => import("./components/ResetPassword/ResetPassword"));
+
+const PageFallback = () => <div style={{ minHeight: "60vh" }}></div>;
 
 const router = createBrowserRouter([
   {
@@ -20,7 +23,9 @@ const router = createBrowserRouter([
         path: "upload",
         element: (
           <ProtectedRoute>
-            <UploadDataPage />
+            <Suspense fallback={<PageFallback />}>
+              <UploadDataPage />
+            </Suspense>
           </ProtectedRoute>
         ),
         errorElement: <ErrorPage />,
@@ -37,12 +42,20 @@ const router = createBrowserRouter([
       },
       {
         path: "forgot-password",
-        element: <ForgotPassword />,
+        element: (
+          <Suspense fallback={<PageFallback />}>
+            <ForgotPassword />
+          </Suspense>
+        ),
         errorElement: <ErrorPage />,
       },
       {
         path: "reset-password/:uid/:token",
-        element: <ResetPassword />,
+        element: (
+          <Suspense fallback={<PageFallback />}>
+            <ResetPassword />
+          </Suspense>
+        ),
         errorElement: <ErrorPage />,
       },
     ],

@@ -34,10 +34,13 @@ export default function FormPYQ({ fetchFn }) {
   if (selectedValues.semester && selectedValues.branch) {
     const sem = selectedValues.semester;
     const branch = selectedValues.branch;
-    subjectsToShow.push(
-      ["ALL SUBJECTS", "All"],
-      ...subjects[branch][ordinals[sem]],
-    );
+    const branchSubjects =
+      Number(sem) <= 2
+        ? subjects.CommonForAllBranches?.[ordinals[sem]]
+        : subjects[branch]?.[ordinals[sem]];
+    if (branchSubjects) {
+      subjectsToShow.push(["ALL SUBJECTS", "All"], ...branchSubjects);
+    }
   }
 
   async function handleSubmit(event) {
@@ -48,22 +51,8 @@ export default function FormPYQ({ fetchFn }) {
       const data = Object.fromEntries(fd.entries());
       const queryString = new URLSearchParams(data).toString();
       await fetchFn(queryString);
-      setSelectedValues({
-        semester: "",
-        branch: "",
-        subject: "",
-        fromYear: "",
-        toYear: "",
-      });
-    } catch (error) {
-      setSelectedValues({
-        semester: "",
-        branch: "",
-        subject: "",
-        fromYear: "",
-        toYear: "",
-      });
-      throw error;
+    } catch {
+      // Retain user's selected values on error so they can adjust filters
     } finally {
       setFetching(false);
     }

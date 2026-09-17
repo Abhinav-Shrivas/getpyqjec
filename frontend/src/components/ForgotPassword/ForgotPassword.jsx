@@ -19,10 +19,14 @@ export default function ForgotPassword() {
       const res = await fetch(`${API_BASE}/auth/forgot-password/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
       const data = await res.json();
-      setMessage(data.message || "If an account exists, a reset link has been sent.");
+      if (res.ok) {
+        setMessage(data.message || "If an account exists, a reset link has been sent. Please check your Inbox and Spam folder.");
+      } else {
+        setError(data.error || "Failed to send reset link. Please try again.");
+      }
     } catch {
       setError("Could not connect to the server.");
     } finally {

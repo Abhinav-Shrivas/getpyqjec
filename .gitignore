@@ -1,23 +1,79 @@
-# Python
+# ==============================================================================
+# Python & Virtual Environments
+# ==============================================================================
 venv/
+env/
+ENV/
+.venv/
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
 
+# ==============================================================================
+# Environment Variables & Secrets (CRITICAL)
+# ==============================================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service_account*.json
+credentials.json
+token.json
+
+# ==============================================================================
 # Django
+# ==============================================================================
+*.sqlite3
+*.sqlite3-journal
 db.sqlite3
 staticfiles/
+media/
 
-# Project data (VERY IMPORTANT)
+# ==============================================================================
+# Project Data & Raw Archives (VERY IMPORTANT)
+# ==============================================================================
 data/
+files-getpyqjec-gdrive/
 
-# Node
+# ==============================================================================
+# Node & Frontend Build
+# ==============================================================================
 node_modules/
 frontend/node_modules/
-
-# Frontend build
 frontend/dist/
+frontend/.vite/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# OS
+# ==============================================================================
+# IDEs, Editors & OS Files
+# ==============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.gemini/
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ==============================================================================
+# Internal Guides & System Documentation
+# ==============================================================================
+project_context.md
+GetPYQJEC_Interview_Prep.pdf
+IMPLEMENTATION_GUIDE.md
