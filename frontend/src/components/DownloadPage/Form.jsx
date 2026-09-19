@@ -6,7 +6,7 @@ import {
   semesters,
   ordinals,
 } from "../../information";
-import ScrollYearPicker from "../ScrollYearPicker/ScrollYearPicker";
+import CustomSelect from "../CustomSelect/CustomSelect";
 
 const initialState = {
   semester: "",
@@ -29,9 +29,19 @@ export default function FormPYQ({ fetchFn }) {
     if (!selectedValues.fromYear) return allYears;
     return allYears.filter((y) => y >= Number(selectedValues.fromYear));
   }, [selectedValues.fromYear]);
-  const subjectsToShow = [];
 
-  if (selectedValues.semester && selectedValues.branch) {
+  const branchOptions = useMemo(() => {
+    if (selectedValues.semester === "1" || selectedValues.semester === "2") {
+      return [{ value: "CommonForAllBranches", label: "Common For All Branches" }];
+    }
+    return Object.entries(branches).map(([short, full]) => ({
+      value: short,
+      label: full,
+    }));
+  }, [selectedValues.semester]);
+
+  const subjectsToShow = useMemo(() => {
+    if (!selectedValues.semester || !selectedValues.branch) return [];
     const sem = selectedValues.semester;
     const branch = selectedValues.branch;
     const branchSubjects =
@@ -39,9 +49,13 @@ export default function FormPYQ({ fetchFn }) {
         ? subjects.CommonForAllBranches?.[ordinals[sem]]
         : subjects[branch]?.[ordinals[sem]];
     if (branchSubjects) {
-      subjectsToShow.push(["ALL SUBJECTS", "All"], ...branchSubjects);
+      return [
+        { value: "All", label: "ALL SUBJECTS" },
+        ...branchSubjects.map((s) => ({ value: s[1], label: s[0] })),
+      ];
     }
-  }
+    return [];
+  }, [selectedValues.semester, selectedValues.branch]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -57,10 +71,10 @@ export default function FormPYQ({ fetchFn }) {
       setFetching(false);
     }
   }
+
   function handleReset(e) {
     e.preventDefault();
     setSelectedValues(initialState);
-    e.target.reset();
   }
 
   return (
@@ -74,123 +88,93 @@ export default function FormPYQ({ fetchFn }) {
           onReset={handleReset}
           className={styles.form}
         >
+          {/* Row 1: Semester, Branch, Subject */}
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
               <label htmlFor="semester" className={styles.label}>
                 Semester
               </label>
-              <select
+              <CustomSelect
                 id="semester"
                 name="semester"
                 value={selectedValues.semester}
-                className={styles.select}
+                placeholder="Select Semester"
+                options={semesters.map((s) => ({ value: String(s), label: `Semester ${s}` }))}
                 required
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (Number(value) > 2) {
+                onChange={(val) => {
+                  if (Number(val) > 2) {
                     setSelectedValues((prev) => ({
                       ...prev,
-                      semester: value,
+                      semester: val,
                       branch: "",
                       subject: "",
                     }));
                   } else {
                     setSelectedValues((prev) => ({
                       ...prev,
-                      semester: value,
+                      semester: val,
                       branch: "CommonForAllBranches",
                       subject: "",
                     }));
                   }
                 }}
-              >
-                <option value="" disabled hidden>
-                  Select Semester
-                </option>
-                {semesters.map((sem) => (
-                  <option key={sem} value={sem}>
-                    {sem}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div className={styles.formGroup}>
               <label htmlFor="branch" className={styles.label}>
                 Branch
               </label>
-              <select
+              <CustomSelect
                 id="branch"
                 name="branch"
                 value={selectedValues.branch}
-                className={styles.select}
+                placeholder="Select Branch"
+                options={branchOptions}
                 required
-                onChange={(e) =>
+                disabled={!selectedValues.semester}
+                onChange={(val) =>
                   setSelectedValues((prev) => ({
                     ...prev,
-                    branch: e.target.value,
+                    branch: val,
                     subject: "",
                   }))
                 }
-              >
-                {selectedValues.semester == 1 ||
-                selectedValues.semester == 2 ? (
-                  <option value="CommonForAllBranches">
-                    Common For All Branches
-                  </option>
-                ) : (
-                  <>
-                    <option value="" disabled hidden>
-                      Select Branch
-                    </option>
-                    {Object.entries(branches).map(([short, full]) => {
-                      return (
-                        <option key={short} value={short}>
-                          {full}
-                        </option>
-                      );
-                    })}
-                  </>
-                )}
-              </select>
+              />
             </div>
 
             <div className={styles.formGroup}>
               <label htmlFor="subject" className={styles.label}>
                 Subject
               </label>
-              <select
+              <CustomSelect
                 id="subject"
                 name="subject_code"
                 value={selectedValues.subject}
-                className={styles.select}
-                onChange={(e) =>
+                placeholder={!selectedValues.branch ? "Select Branch First" : "Select Subject"}
+                options={subjectsToShow}
+                required
+                disabled={!selectedValues.branch}
+                onChange={(val) =>
                   setSelectedValues((prev) => ({
                     ...prev,
-                    subject: e.target.value,
+                    subject: val,
                   }))
                 }
-                required
-              >
-                <option value="" disabled hidden>
-                  Select the subject
-                </option>
-                {subjectsToShow.map((subject) => (
-                  <option key={subject[0]} value={subject[1]}>
-                    {subject[0]}  
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
+          {/* Row 2: From Year, To Year */}
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
               <label className={styles.label}>From Year</label>
-              <ScrollYearPicker
-                years={allYears}
-                value={selectedValues.fromYear}
+              <CustomSelect
                 name="from_year"
+                value={selectedValues.fromYear}
+                placeholder="Select From Year"
+                options={allYears.map((y) => ({ value: String(y), label: String(y) }))}
+                required
                 onChange={(val) =>
                   setSelectedValues((prev) => ({
                     ...prev,
@@ -203,10 +187,12 @@ export default function FormPYQ({ fetchFn }) {
 
             <div className={styles.formGroup}>
               <label className={styles.label}>To Year</label>
-              <ScrollYearPicker
-                years={toYearOptions}
-                value={selectedValues.toYear}
+              <CustomSelect
                 name="to_year"
+                value={selectedValues.toYear}
+                placeholder="Select To Year"
+                options={toYearOptions.map((y) => ({ value: String(y), label: String(y) }))}
+                required
                 onChange={(val) =>
                   setSelectedValues((prev) => ({
                     ...prev,
@@ -219,9 +205,9 @@ export default function FormPYQ({ fetchFn }) {
             {/* Empty spacer to align with the 3-column row above */}
             <div className={styles.formGroup} style={{ visibility: "hidden" }}></div>
           </div>
-
-          </form>
+        </form>
       </div>
+
       <div className={styles.buttonGroup}>
         <button
           type="submit"
@@ -231,7 +217,12 @@ export default function FormPYQ({ fetchFn }) {
         >
           {fetching ? "Sending Request..." : "Submit"}
         </button>
-        <button type="reset" form="pyqForm" className={styles.resetBtn}>
+        <button
+          type="button"
+          onClick={handleReset}
+          className={styles.resetBtn}
+          disabled={fetching}
+        >
           Reset
         </button>
       </div>

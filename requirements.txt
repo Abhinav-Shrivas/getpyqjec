@@ -16,5 +16,5 @@ dj-database-url==2.3.0
 psycopg[binary]==3.2.10
 gunicorn==23.0.0
 whitenoise==6.9.0
-google-api-python-client==2.172.0
-google-auth==2.40.1
+boto3>=1.35.0
+Pillow>=11.0.0

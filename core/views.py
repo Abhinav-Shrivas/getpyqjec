@@ -1,5 +1,6 @@
-import os
+import hashlib
 import logging
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from io import BytesIO
@@ -8,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
+from django.db import transaction
 from django.http import FileResponse, JsonResponse
 from django.shortcuts import render
 from django.template.exceptions import TemplateDoesNotExist
@@ -21,10 +23,17 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from utils.drive import delete_pdf_from_drive, download_pdf_from_drive, upload_pdf_to_drive
 from utils.pdf import compile_pdfs_from_buffers
-from .models import PYQ
-from .serializers import RegisterSerializer
+from utils.r2_storage import R2StorageError, get_pyq_storage, get_verification_storage
+
+from .models import PYQ, StudentVerification
+from .permissions import IsAdminUser, IsVerifiedStudent
+from .serializers import (
+    RegisterSerializer,
+    VerificationAdminDetailSerializer,
+    VerificationAdminListSerializer,
+    VerificationStatusSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +41,27 @@ User = get_user_model()
 token_generator = PasswordResetTokenGenerator()
 
 MAX_PDF_SIZE_MB = 10
+
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _get_verification_status(user):
+    """Get the user's verification status string."""
+    try:
+        return user.verification.status
+    except StudentVerification.DoesNotExist:
+        return 'unverified'
+
+
+def _user_response_data(user):
+    """Standard user data dict included in auth responses."""
+    return {
+        'rno': user.rno,
+        'email': user.email,
+        'name': user.name,
+        'role': user.role,
+        'verification_status': _get_verification_status(user),
+    }
 
 
 def _set_refresh_cookie(response, refresh_token):
@@ -71,12 +101,16 @@ def react_app(request):
         })
 
 
+# ─── Health Check ─────────────────────────────────────────────────────────────
+
 class HealthCheckView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
         return JsonResponse({"status": "healthy"})
 
+
+# ─── Authentication ───────────────────────────────────────────────────────────
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -90,12 +124,7 @@ class RegisterView(APIView):
 
         response = Response({
             "access": str(refresh.access_token),
-            "user": {
-                "rno": user.rno,
-                "email": user.email,
-                "name": user.name,
-                "role": user.role,
-            }
+            "user": _user_response_data(user),
         }, status=status.HTTP_201_CREATED)
 
         _set_refresh_cookie(response, refresh)
@@ -119,12 +148,7 @@ class LoginView(APIView):
         response = Response(
             {
                 "access": str(refresh.access_token),
-                "user": {
-                    "rno": user.rno,
-                    "email": user.email,
-                    "name": user.name,
-                    "role": user.role,
-                },
+                "user": _user_response_data(user),
             },
             status=status.HTTP_200_OK,
         )
@@ -160,8 +184,10 @@ class LogoutView(APIView):
         return response
 
 
+# ─── PYQ Upload (R2) ─────────────────────────────────────────────────────────
+
 class UploadPYQView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVerifiedStudent]
 
     def post(self, request):
         branch = request.POST.get("branch")
@@ -223,18 +249,26 @@ class UploadPYQView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Upload to Google Drive
-        filename = f"{branch}_sem{semester}_{subject_code}_{year}_{exam_session}.pdf"
+        # Generate opaque object key and file hash
+        object_key = f"pyqs/{branch}/{uuid.uuid4().hex}.pdf"
+        file_hash = hashlib.sha256(file_bytes).hexdigest()
+
+        # Upload to R2
         try:
-            result = upload_pdf_to_drive(file_bytes, filename, branch=branch)
-        except Exception as e:
-            logger.error(f"Google Drive upload error: {e}", exc_info=True)
+            storage = get_pyq_storage()
+            storage.upload_object(
+                key=object_key,
+                data=file_bytes,
+                content_type="application/pdf",
+            )
+        except R2StorageError as e:
+            logger.error(f"R2 upload error: {e}")
             return Response(
-                {"error": f"Google Drive upload failed: {str(e)}"},
+                {"error": "File storage upload failed. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        # Save metadata to database with compensation/cleanup on failure
+        # Save metadata to database with cleanup on failure
         try:
             pyq = PYQ.objects.create(
                 branch=branch,
@@ -242,16 +276,16 @@ class UploadPYQView(APIView):
                 subject_code=subject_code,
                 year=year,
                 exam_session=exam_session,
-                drive_file_id=result["file_id"],
-                drive_download_url=result["download_url"],
+                r2_object_key=object_key,
+                file_hash=file_hash,
                 uploaded_by=request.user,
             )
         except Exception as db_err:
-            logger.error(f"Database error saving PYQ: {db_err}. Cleaning up Drive file {result['file_id']}.")
+            logger.error(f"Database error saving PYQ: {db_err}. Cleaning up R2 object {object_key}.")
             try:
-                delete_pdf_from_drive(result["file_id"])
+                storage.delete_object(object_key)
             except Exception as cleanup_err:
-                logger.error(f"Failed to cleanup orphaned Drive file {result['file_id']}: {cleanup_err}")
+                logger.error(f"Failed to cleanup orphaned R2 object {object_key}: {cleanup_err}")
 
             return Response(
                 {"error": "Failed to save PYQ record in database."},
@@ -259,10 +293,12 @@ class UploadPYQView(APIView):
             )
 
         return Response(
-            {"success": True, "id": pyq.id, "file_id": pyq.drive_file_id},
+            {"success": True, "id": pyq.id},
             status=status.HTTP_201_CREATED,
         )
 
+
+# ─── PYQ Download (R2 presigned URLs) ────────────────────────────────────────
 
 class DownloadPYQView(APIView):
     permission_classes = [AllowAny]
@@ -299,18 +335,22 @@ class DownloadPYQView(APIView):
             )
 
         # Query database for matching PYQs
-        queryset = PYQ.objects.filter(
-            branch=branch.upper(),
-            semester=semester,
-            year__gte=from_year,
-            year__lte=to_year,
+        queryset = (
+            PYQ.objects.filter(
+                branch=branch.upper(),
+                semester=semester,
+                year__gte=from_year,
+                year__lte=to_year,
+            )
+            .exclude(r2_object_key="")
+            .filter(r2_object_key__isnull=False)
         )
 
         if subject_code.lower() != "all":
             queryset = queryset.filter(subject_code=subject_code.upper())
 
         pyqs = list(
-            queryset.only("drive_file_id", "year", "subject_code", "exam_session")
+            queryset.only("r2_object_key", "year", "subject_code", "exam_session")
             .order_by("subject_code", "year", "exam_session")
         )
 
@@ -333,14 +373,20 @@ class DownloadPYQView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Download PDFs from Google Drive (concurrently if multiple) and merge in memory
+        # Download PDFs from R2 and merge
         try:
+            storage = get_pyq_storage()
+
+            def _download(pyq):
+                return storage.download_object(pyq.r2_object_key)
+
             max_workers = min(len(pyqs), 5)
             if max_workers > 1:
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    pdf_buffers = list(executor.map(download_pdf_from_drive, [p.drive_file_id for p in pyqs]))
+                    pdf_buffers = list(executor.map(_download, pyqs))
             else:
-                pdf_buffers = [download_pdf_from_drive(pyqs[0].drive_file_id)]
+                pdf_buffers = [_download(pyqs[0])]
+
             merged_pdf = compile_pdfs_from_buffers(pdf_buffers)
         except Exception as e:
             logger.error(f"Download/Merge failed: {e}", exc_info=True)
@@ -366,6 +412,8 @@ class DownloadPYQView(APIView):
 
         return response
 
+
+# ─── Password Reset ──────────────────────────────────────────────────────────
 
 class RequestPasswordResetView(APIView):
     permission_classes = [AllowAny]
@@ -444,3 +492,418 @@ class ResetPasswordView(APIView):
         user.save()
 
         return Response({"message": "Password reset successful"}, status=status.HTTP_200_OK)
+
+
+# ─── Student Verification ────────────────────────────────────────────────────
+
+class VerificationStatusView(APIView):
+    """GET — Returns current user's verification status."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            verification = request.user.verification
+        except StudentVerification.DoesNotExist:
+            return Response({
+                'status': 'unverified',
+                'submitted_at': None,
+                'reviewed_at': None,
+                'rejection_reason': '',
+            })
+
+        serializer = VerificationStatusSerializer(verification)
+        return Response(serializer.data)
+
+
+class VerificationSubmitView(APIView):
+    """
+    POST — Upload ID card image, store in R2, set status='pending'.
+
+    NEVER sets status to 'verified'. An administrator manually reviews the submission.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        # Check if user already has a pending or verified submission
+        try:
+            existing = user.verification
+            if existing.status == 'verified':
+                return Response(
+                    {'error': 'Your account is already verified.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if existing.status == 'pending':
+                return Response(
+                    {'error': 'You already have a pending verification submission.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        except StudentVerification.DoesNotExist:
+            existing = None
+
+        # Validate file
+        file = request.FILES.get('file')
+        if not file:
+            return Response(
+                {'error': 'ID card image is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        max_size = settings.VERIFICATION_MAX_IMAGE_SIZE_MB * 1024 * 1024
+        if file.size > max_size:
+            return Response(
+                {'error': f'Image exceeds {settings.VERIFICATION_MAX_IMAGE_SIZE_MB}MB limit.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if file.content_type not in settings.VERIFICATION_ALLOWED_IMAGE_TYPES:
+            return Response(
+                {'error': 'Only JPEG and PNG images are allowed.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Read and validate actual image content
+        file_bytes = file.read()
+        if not self._validate_image_content(file_bytes):
+            return Response(
+                {'error': 'File content is not a valid image.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generate opaque R2 key (no PII in key)
+        object_key = f"verification/{uuid.uuid4().hex}"
+
+        # Upload to private R2 verification bucket
+        try:
+            storage = get_verification_storage()
+            storage.upload_object(
+                key=object_key,
+                data=file_bytes,
+                content_type=file.content_type,
+            )
+        except R2StorageError as e:
+            logger.error(f"Verification image upload failed: {e}")
+            return Response(
+                {'error': 'Failed to upload verification image. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        now = datetime.now(timezone.utc)
+
+        # Create or update verification record
+        # Status is ALWAYS 'pending' — NEVER 'verified'
+        verification_data = {
+            'status': 'pending',
+            'r2_object_key': object_key,
+            'submitted_at': now,
+            'reviewed_at': None,
+            'reviewed_by': None,
+            'rejection_reason': '',
+        }
+
+        if existing:
+            # Delete old R2 object if exists
+            old_key = existing.r2_object_key
+            if old_key and old_key != object_key:
+                try:
+                    storage.delete_object(old_key)
+                except R2StorageError:
+                    logger.warning(f"Failed to delete old verification image: {old_key}")
+
+            for attr, value in verification_data.items():
+                setattr(existing, attr, value)
+            existing.save()
+            verification = existing
+        else:
+            verification = StudentVerification.objects.create(
+                user=user,
+                **verification_data,
+            )
+
+        return Response({
+            'message': (
+                'Your ID card has been submitted successfully and is pending '
+                'manual verification by an administrator.'
+            ),
+            'status': verification.status,
+        }, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _validate_image_content(file_bytes: bytes) -> bool:
+        """Validate actual image content using Pillow — don't trust MIME type."""
+        try:
+            from PIL import Image
+            img = Image.open(BytesIO(file_bytes))
+            img.verify()
+            return img.format in ('JPEG', 'PNG')
+        except Exception:
+            return False
+
+
+class VerificationResubmitView(APIView):
+    """POST — Resubmit after rejection."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        try:
+            verification = user.verification
+        except StudentVerification.DoesNotExist:
+            return Response(
+                {'error': 'No verification record found. Please submit first.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if verification.status != 'rejected':
+            return Response(
+                {'error': f'Resubmission is only allowed for rejected verifications. Current status: {verification.status}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Delegate to the submit view logic
+        return VerificationSubmitView().post(request)
+
+
+# ─── Admin Verification Management ───────────────────────────────────────────
+
+class VerificationListView(APIView):
+    """GET — List verification submissions with filtering and pagination. Admin only."""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request):
+        queryset = StudentVerification.objects.select_related('user', 'reviewed_by').all()
+
+        # Filter by status
+        status_filter = request.GET.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        # Search by roll number, name, or email
+        search = request.GET.get('search')
+        if search:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(user__rno__icontains=search) |
+                Q(user__name__icontains=search) |
+                Q(user__email__icontains=search)
+            )
+
+        # Order by most recent submissions first
+        queryset = queryset.order_by('-submitted_at')
+
+        # Pagination
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 20))
+        total = queryset.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+
+        verifications = queryset[start:end]
+        serializer = VerificationAdminListSerializer(verifications, many=True)
+
+        return Response({
+            'results': serializer.data,
+            'total': total,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': (total + page_size - 1) // page_size,
+        })
+
+
+class VerificationDetailView(APIView):
+    """GET — Verification detail with presigned image URL and OCR results. Admin only."""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request, pk):
+        try:
+            verification = StudentVerification.objects.select_related(
+                'user', 'reviewed_by'
+            ).get(pk=pk)
+        except StudentVerification.DoesNotExist:
+            return Response(
+                {'error': 'Verification not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = VerificationAdminDetailSerializer(verification)
+        data = serializer.data
+
+        # Generate short-lived presigned URL for image access
+        if verification.r2_object_key:
+            try:
+                storage = get_verification_storage()
+                data['image_url'] = storage.generate_presigned_download_url(
+                    verification.r2_object_key,
+                    expiry=900,  # 15 minutes for admin review
+                )
+            except R2StorageError:
+                data['image_url'] = None
+                data['image_error'] = 'Failed to generate image access URL.'
+        else:
+            data['image_url'] = None
+
+        return Response(data)
+
+
+class VerificationApproveView(APIView):
+    """
+    POST — THE ONLY PATH to set status='verified'. Admin only.
+
+    This is the sole approval mechanism in the entire system.
+    OCR cannot call this. Students cannot call this. Only admins.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request, pk):
+        try:
+            with transaction.atomic():
+                verification = (
+                    StudentVerification.objects
+                    .select_for_update()
+                    .select_related('user')
+                    .get(pk=pk)
+                )
+
+                if verification.status != 'pending':
+                    return Response(
+                        {'error': f'Cannot approve a submission with status: {verification.status}'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                verification.status = 'verified'
+                verification.reviewed_at = datetime.now(timezone.utc)
+                verification.reviewed_by = request.user
+                verification.rejection_reason = ''
+                verification.save()
+
+        except StudentVerification.DoesNotExist:
+            return Response(
+                {'error': 'Verification not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response({
+            'message': f'Verification approved for {verification.user.rno}.',
+            'status': 'verified',
+        })
+
+
+class VerificationRejectView(APIView):
+    """POST — Reject verification with reason. Admin only."""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request, pk):
+        reason = request.data.get('reason', '').strip()
+        if not reason:
+            return Response(
+                {'error': 'Rejection reason is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            with transaction.atomic():
+                verification = (
+                    StudentVerification.objects
+                    .select_for_update()
+                    .select_related('user')
+                    .get(pk=pk)
+                )
+
+                if verification.status not in ('pending', 'verified'):
+                    return Response(
+                        {'error': f'Cannot reject a submission with status: {verification.status}'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                verification.status = 'rejected'
+                verification.reviewed_at = datetime.now(timezone.utc)
+                verification.reviewed_by = request.user
+                verification.rejection_reason = reason
+                verification.save()
+
+        except StudentVerification.DoesNotExist:
+            return Response(
+                {'error': 'Verification not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response({
+            'message': f'Verification rejected for {verification.user.rno}.',
+            'status': 'rejected',
+            'reason': reason,
+        })
+
+
+class VerificationDeleteDocumentView(APIView):
+    """DELETE — Delete verification document from R2 storage. Admin only."""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def delete(self, request, pk):
+        try:
+            verification = StudentVerification.objects.get(pk=pk)
+        except StudentVerification.DoesNotExist:
+            return Response(
+                {'error': 'Verification not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not verification.r2_object_key:
+            return Response(
+                {'error': 'No document to delete.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        object_key = verification.r2_object_key
+
+        try:
+            storage = get_verification_storage()
+            storage.delete_object(object_key)
+        except R2StorageError as e:
+            logger.error(f"Failed to delete verification document {object_key}: {e}")
+            return Response(
+                {'error': 'Failed to delete document from storage.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        verification.r2_object_key = ''
+        verification.save(update_fields=['r2_object_key'])
+
+        return Response({
+            'message': f'Verification document deleted for {verification.user.rno}.',
+        })
+
+
+class ExistingPYQOptionsView(APIView):
+    """
+    GET /upload/existing-options/?branch=IT&semester=6&subject_code=IT62
+    Returns existing PYQs for the branch and semester (and optional subject_code).
+    Used by the upload form to omit options where data is already available.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        branch = request.GET.get("branch", "").strip().upper()
+        semester = request.GET.get("semester", "").strip()
+        subject_code = request.GET.get("subject_code", "").strip().upper()
+
+        if not branch or not semester:
+            return Response({"existing": []})
+
+        try:
+            semester = int(semester)
+        except ValueError:
+            return Response({"existing": []})
+
+        queryset = (
+            PYQ.objects.filter(branch=branch, semester=semester)
+            .exclude(r2_object_key="")
+            .filter(r2_object_key__isnull=False)
+        )
+
+        if subject_code and subject_code.lower() != "all":
+            queryset = queryset.filter(subject_code=subject_code)
+
+        existing = list(queryset.values("subject_code", "year", "exam_session"))
+        return Response({"existing": existing})

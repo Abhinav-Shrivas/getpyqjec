@@ -22,14 +22,16 @@
 }
 
 .container {
-  background: rgba(25, 25, 20, 0.6);
+  background: #12111a;
   border-radius: 16px;
   padding: 40px 48px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
   max-width: 500px;
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(180, 160, 220, 0.16);
   text-align: center;
+  position: relative;
+  z-index: 2;
 }
 
 .iconWrapper {

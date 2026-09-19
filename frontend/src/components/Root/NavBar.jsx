@@ -10,10 +10,12 @@ export default function NavBar() {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+
   async function handleLogout() {
     await logout();
     navigate("/");
   }
+
   useEffect(() => {
     if (!showDropdown) return;
     function handleClickOutside(e) {
@@ -24,6 +26,9 @@ export default function NavBar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDropdown]);
+
+  const vStatus = user?.verification_status || "unverified";
+
   return (
     <nav className={classes.navbar}>
       <NavLink to="" className={() => classes["download-link"]}>
@@ -48,19 +53,42 @@ export default function NavBar() {
         >
           UPLOAD
         </NavLink>
+
         {isLoggedIn ? (
           <div ref={dropdownRef} className={classes["user-menu"]}>
-            <img
-              src={userIcon}
-              alt="User"
-              className={classes["user-icon"]}
+            <div
+              className={classes["user-trigger"]}
               onClick={() => setShowDropdown((prev) => !prev)}
-            />
+            >
+              <img
+                src={userIcon}
+                alt="User"
+                className={classes["user-icon"]}
+              />
+              <span
+                className={`${classes["status-dot"]} ${classes[vStatus]}`}
+                title={`Verification status: ${vStatus}`}
+              />
+            </div>
             {showDropdown && (
               <div className={classes.dropdown}>
-                <span className={classes["dropdown-name"]}>
-                  {"Hi " + user?.name?.split(" ")[0]}
-                </span>
+                <div className={classes["dropdown-header"]}>
+                  <span className={classes["dropdown-name"]}>
+                    {"Hi " + user?.name?.split(" ")[0]}
+                  </span>
+                  <span className={`${classes["status-badge"]} ${classes[vStatus]}`}>
+                    {vStatus === "verified" ? "Verified" : vStatus === "pending" ? "Pending" : "Unverified"}
+                  </span>
+                </div>
+
+                <NavLink
+                  to="/verify"
+                  className={classes["dropdown-item"]}
+                  onClick={() => setShowDropdown(false)}
+                >
+                  Verification Status
+                </NavLink>
+
                 <button
                   onClick={handleLogout}
                   className={classes["dropdown-logout"]}

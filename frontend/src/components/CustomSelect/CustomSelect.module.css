@@ -1,0 +1,171 @@
+.wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.open {
+  z-index: 50;
+}
+
+.trigger {
+  width: 100%;
+  padding: 11px 14px;
+  background-color: #181724;
+  border: 1px solid rgba(180, 160, 220, 0.2);
+  border-radius: 8px;
+  color: #EFEEE8;
+  font-family: 'Degular Regular', sans-serif;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s ease;
+  text-align: left;
+  user-select: none;
+}
+
+.placeholder .selectedLabel {
+  color: rgba(239, 238, 232, 0.4);
+}
+
+.selectedLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.arrow {
+  color: rgba(180, 160, 220, 0.6);
+  font-size: 14px;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.arrowUp {
+  transform: rotate(180deg);
+  color: #EFEEE8;
+}
+
+.trigger:hover:not(:disabled) {
+  background-color: #1e1d2c;
+  border-color: rgba(180, 160, 220, 0.4);
+}
+
+.wrapper.open .trigger,
+.trigger:focus {
+  background-color: #1e1d2c;
+  border-color: rgba(180, 160, 220, 0.55);
+  box-shadow: 0 0 12px rgba(180, 160, 220, 0.2);
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.disabled .trigger {
+  cursor: not-allowed;
+}
+
+/* Dropdown Menu Popup */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #14131d;
+  border: 1px solid rgba(180, 160, 220, 0.25);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9);
+  padding: 6px;
+  z-index: 1000;
+  animation: dropdownAnim 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top center;
+}
+
+@keyframes dropdownAnim {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Custom scrollbar for dropdown */
+.list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.list::-webkit-scrollbar-thumb {
+  background: rgba(180, 160, 220, 0.2);
+  border-radius: 4px;
+}
+
+.list::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 160, 220, 0.4);
+}
+
+.item {
+  padding: 9px 12px;
+  border-radius: 6px;
+  color: #EFEEE8;
+  font-family: 'Degular Regular', sans-serif;
+  font-size: 13.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.itemLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item:hover {
+  background-color: rgba(180, 160, 220, 0.12);
+  color: #ffffff;
+}
+
+.itemSelected {
+  background-color: rgba(180, 160, 220, 0.18);
+  color: #c4b5fd;
+  font-family: 'Degular Medium', sans-serif;
+  font-weight: 500;
+}
+
+.checkIcon {
+  font-size: 12px;
+  color: #a78bfa;
+  flex-shrink: 0;
+}
+
+.emptyItem {
+  padding: 12px;
+  text-align: center;
+  color: rgba(239, 238, 232, 0.4);
+  font-size: 13px;
+}

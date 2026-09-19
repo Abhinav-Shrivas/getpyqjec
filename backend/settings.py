@@ -17,10 +17,10 @@ import sys
 from dotenv import load_dotenv
 import dj_database_url
 
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / '.env', override=True)
 
 
 # Quick-start development settings - unsuitable for production
@@ -221,3 +221,22 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = f'GetPYQ <{os.environ.get("EMAIL_HOST_USER")}>'
 
+# ==============================================================================
+# Cloudflare R2 Storage Configuration
+# ==============================================================================
+R2_ACCOUNT_ID = os.environ.get('R2_ACCOUNT_ID', '')
+R2_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID', '')
+R2_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '')
+R2_ENDPOINT_URL = os.environ.get(
+    'R2_ENDPOINT_URL',
+    f'https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com' if R2_ACCOUNT_ID else ''
+)
+R2_PYQ_BUCKET = os.environ.get('R2_PYQ_BUCKET') or os.environ.get('R2_PYQ_BUCKET_NAME') or 'getpyqjec-pyqs'
+R2_VERIFICATION_BUCKET = os.environ.get('R2_VERIFICATION_BUCKET') or os.environ.get('R2_VERIFICATION_BUCKET_NAME') or 'getpyqjec-verifications'
+R2_PRESIGNED_URL_EXPIRY = int(os.environ.get('R2_PRESIGNED_URL_EXPIRY', '3600'))
+
+# ==============================================================================
+# Verification Image Constraints
+# ==============================================================================
+VERIFICATION_MAX_IMAGE_SIZE_MB = int(os.environ.get('VERIFICATION_MAX_IMAGE_SIZE_MB', '5'))
+VERIFICATION_ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png']

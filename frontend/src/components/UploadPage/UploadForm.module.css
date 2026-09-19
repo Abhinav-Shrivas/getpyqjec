@@ -13,7 +13,7 @@
 }
 
 .uploadPage {
-  background: linear-gradient(180deg, #0a0a08 0%, #141410 50%, #0a0a08 100%);
+  background: transparent;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -36,6 +36,7 @@
   text-align: center;
   color: #EFEEE8;
   font-family: 'Degular Medium', sans-serif;
+  font-style: normal;
   font-weight: 500;
   font-size: 0.95em;
   margin-bottom: 40px;
@@ -46,32 +47,67 @@
   margin-left: auto;
   margin-right: auto;
   margin-bottom: 10px;
-  background: rgba(25, 25, 20, 0.6);
+  background-color: #12111a;
   border-radius: 16px;
   padding: 30px 35px;
   max-width: 750px;
   width: 100%;
-  border: 1px solid rgba(180, 160, 120, 0.15);
+  border: 1px solid rgba(180, 160, 220, 0.16);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  position: relative;
+  z-index: 10;
+  overflow: visible;
 }
 
 .form {
   width: 100%;
+  position: relative;
 }
 
 .formRow {
   display: flex;
   gap: 15px;
   margin-bottom: 20px;
+  position: relative;
+}
+
+.formRow:first-of-type {
+  z-index: 20;
+}
+
+.formRow:last-of-type {
+  z-index: 15;
 }
 
 .formGroup {
   flex: 1;
   margin-bottom: 0;
+  position: relative;
 }
 
+.existingNotice {
+  margin-top: -6px;
+  margin-bottom: 14px;
+  padding: 8px 14px;
+  background: rgba(180, 160, 220, 0.08);
+  border: 1px solid rgba(180, 160, 220, 0.2);
+  border-radius: 8px;
+  font-family: 'Degular Regular', sans-serif;
+  font-size: 13px;
+  color: #c4bcdc;
+  line-height: 1.4;
+}
+
+.existingNoticeLabel {
+  color: #fe5858;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+
 select option {
-  background-color: #141410;
-  color: #d4c9b0;
+  background-color: #14131d;
+  color: #EFEEE8;
 }
 
 .label {
@@ -89,12 +125,12 @@ select option {
 .pdfFile {
   width: 100%;
   padding: 11px 14px;
-  background-color: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(180, 160, 120, 0.2);
+  background-color: #181724;
+  border: 1px solid rgba(180, 160, 220, 0.2);
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.3);
+  color: #EFEEE8;
   font-family: 'Degular Regular', sans-serif;
-  font-weight: 300;
+  font-weight: 400;
   font-size: 14px;
   transition: all 0.3s ease;
   outline: none;
@@ -103,9 +139,39 @@ select option {
 .select:focus,
 .manualYear:focus,
 .pdfFile:focus {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: rgba(180, 160, 120, 0.4);
-  box-shadow: 0 0 12px rgba(180, 160, 120, 0.1);
+  background-color: #1e1d2c;
+  border-color: rgba(180, 160, 220, 0.5);
+  box-shadow: 0 0 12px rgba(180, 160, 220, 0.15);
+}
+
+.customFileInputBtn {
+  width: 100%;
+  padding: 11px 14px;
+  background-color: #181724;
+  border: 1px dashed rgba(180, 160, 220, 0.35);
+  border-radius: 8px;
+  color: #EFEEE8;
+  font-family: 'Degular Regular', sans-serif;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.customFileInputBtn:hover {
+  background-color: #1e1d2c;
+  border-color: rgba(180, 160, 220, 0.6);
+  box-shadow: 0 0 12px rgba(180, 160, 220, 0.15);
+  transform: translateY(-1px);
+}
+
+.uploadIconMini {
+  font-size: 16px;
 }
 
 .buttonGroup {
@@ -116,29 +182,53 @@ select option {
   width: 100%;
   margin-top: 20px;
   padding-bottom: 40px;
+  position: relative;
+  z-index: 1;
 }
 
-.submitBtn,
-.resetBtn {
+.submitBtn {
   flex: 0 1 220px;
   padding: 14px 30px;
   border: none;
   border-radius: 25px;
   font-family: 'Degular Medium', sans-serif;
   font-size: 15px;
-  font-weight: 500;
-  color: white;
-  background: #FFFFFF80;
+  font-weight: 600;
+  color: #0d0c13;
+  background: #ffffff;
   cursor: pointer;
   transition: all 0.3s ease;
   letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
-.submitBtn:hover,
-.resetBtn:hover {
-  background: rgba(255, 255, 255, 0.6);
+.submitBtn:hover {
+  background: #f1edfa;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+}
+
+.resetBtn {
+  flex: 0 1 220px;
+  padding: 14px 30px;
+  border: 1px solid rgba(180, 160, 220, 0.25);
+  border-radius: 25px;
+  font-family: 'Degular Medium', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #EFEEE8;
+  background: #201e2c;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.resetBtn:hover {
+  background: #2b283b;
+  border-color: rgba(180, 160, 220, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 
 /* File upload area */
@@ -314,15 +404,15 @@ select option {
 }
 
 .overlayContent {
-  background: #141410;
-  border: 1px solid rgba(180, 160, 120, 0.2);
+  background: #12111a;
+  border: 1px solid rgba(180, 160, 220, 0.2);
   border-radius: 16px;
   width: 90%;
   max-width: 500px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9);
   animation: overlaySlideIn 0.25s ease-out;
 }
 
@@ -336,7 +426,7 @@ select option {
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px 16px;
-  border-bottom: 1px solid rgba(180, 160, 120, 0.1);
+  border-bottom: 1px solid rgba(180, 160, 220, 0.12);
 }
 
 .overlayTitle {
@@ -359,7 +449,7 @@ select option {
 
 .overlayClose:hover {
   color: #EFEEE8;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .overlayList {
@@ -375,25 +465,27 @@ select option {
   display: flex;
   justify-content: space-between;
   padding: 16px 24px 20px;
-  border-top: 1px solid rgba(180, 160, 120, 0.1);
+  border-top: 1px solid rgba(180, 160, 220, 0.12);
   gap: 12px;
 }
 
 .overlayDoneBtn {
-  background: #FFFFFF80;
-  color: white;
+  background: #ffffff;
+  color: #0d0c13;
   border: none;
   padding: 8px 24px;
   border-radius: 20px;
   font-family: 'Degular Medium', sans-serif;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .overlayDoneBtn:hover {
-  background: rgba(255, 255, 255, 0.6);
+  background: #f1edfa;
+  transform: translateY(-1px);
 }
 
 /* Chrome, Safari, Edge, Opera */

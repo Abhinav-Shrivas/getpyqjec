@@ -46,7 +46,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def __str__(self):
         return self.rno
-    
+
+    @property
+    def verification_status(self):
+        """Quick access to verification status without extra queries if prefetched."""
+        try:
+            return self.verification.status
+        except StudentVerification.DoesNotExist:
+            return 'unverified'
+
 
 #PYQ Model
 class PYQ(models.Model):
@@ -55,8 +63,8 @@ class PYQ(models.Model):
     subject_code = models.CharField(max_length=20)
     year = models.IntegerField()
     exam_session = models.CharField(max_length=10)
-    drive_file_id = models.CharField(max_length=100)
-    drive_download_url = models.URLField()
+    r2_object_key = models.CharField(max_length=255, default='')
+    file_hash = models.CharField(max_length=64, blank=True, default='')
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
@@ -71,3 +79,46 @@ class PYQ(models.Model):
         
     def __str__(self):
         return f"{self.branch}/sem{self.semester}/{self.subject_code}/{self.year}_{self.exam_session}"
+
+
+class StudentVerification(models.Model):
+    """
+    Tracks student ID verification lifecycle.
+    Administrators manually review uploaded ID cards to approve or reject verification.
+    """
+
+    VERIFICATION_STATUS = (
+        ('unverified', 'Unverified'),
+        ('pending', 'Pending Review'),
+        ('verified', 'Verified'),
+        ('rejected', 'Rejected'),
+    )
+
+    # ── Core verification fields ──────────────────────────────────────
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name='verification'
+    )
+    status = models.CharField(
+        max_length=20, choices=VERIFICATION_STATUS, default='unverified'
+    )
+    r2_object_key = models.CharField(max_length=255, blank=True, default='')
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviews_given',
+    )
+    rejection_reason = models.TextField(blank=True, default='')
+
+    class Meta:
+        verbose_name = 'Student Verification'
+        verbose_name_plural = 'Student Verifications'
+        indexes = [
+            models.Index(fields=['status'], name='verification_status_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.user.rno} — {self.get_status_display()}"

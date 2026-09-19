@@ -6,8 +6,9 @@
 }
 
 .navbar {
-  background-color: #0a0a0a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: #0c0b11;
+  border-bottom: 1px solid rgba(180, 160, 220, 0.12);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   height: 50px;
   padding: 0 2rem;
   display: flex;
@@ -15,6 +16,9 @@
   margin-bottom: 0;
   justify-content: space-between;
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .download-link {
@@ -87,40 +91,123 @@
   position: relative;
 }
 
+.user-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
 .user-icon {
   width: 24px;
   height: 24px;
-  cursor: pointer;
   transition: transform 0.2s ease;
 }
 
-.user-icon:hover {
+.user-trigger:hover .user-icon {
   transform: scale(1.1);
+}
+
+.status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid #0c0b11;
+}
+
+.status-dot.verified {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.status-dot.pending {
+  background-color: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+}
+
+.status-dot.rejected {
+  background-color: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.status-dot.unverified {
+  background-color: #94a3b8;
 }
 
 .dropdown {
   position: absolute;
   top: 40px;
   right: 0;
-  background: #1a1810;
-  border: 1px solid rgba(180, 160, 120, 0.15);
+  background: #14131d;
+  border: 1px solid rgba(180, 160, 220, 0.2);
   border-radius: 10px;
   padding: 12px 16px;
-  min-width: 150px;
+  min-width: 175px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  z-index: 100;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
+  z-index: 200;
+}
+
+.dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(180, 160, 120, 0.15);
 }
 
 .dropdown-name {
   color: white;
   font-family: 'Outfit Medium', sans-serif;
   font-weight: 500;
-  font-size: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(180, 160, 120, 0.15);
+  font-size: 15px;
+}
+
+.status-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.status-badge.verified {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.status-badge.pending {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}
+
+.status-badge.rejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.status-badge.unverified {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+.dropdown-item {
+  color: #EFEEE8;
+  font-family: 'Outfit Medium', sans-serif;
+  font-size: 14px;
+  text-decoration: none;
+  padding: 4px 0;
+  transition: color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  color: #d4c9b0;
 }
 
 .dropdown-logout {
@@ -129,11 +216,14 @@
   color: white;
   font-family: 'Outfit Medium', sans-serif;
   font-weight: 500;
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
   text-align: left;
   padding: 4px 0;
   transition: color 0.2s ease;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 2px;
+  padding-top: 8px;
 }
 
 .dropdown-logout:hover {

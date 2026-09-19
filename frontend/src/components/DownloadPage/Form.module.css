@@ -13,7 +13,7 @@
 }
 
 .downloadPage {
-  background: linear-gradient(180deg, #0a0a08 0%, #141410 50%, #0a0a08 100%);
+  background: transparent;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -46,32 +46,47 @@
   margin-left: auto;
   margin-right: auto;
   margin-bottom: 10px;
-  background: rgba(25, 25, 20, 0.6);
+  background-color: #12111a;
   border-radius: 16px;
   padding: 30px 35px;
   max-width: 750px;
   width: 100%;
-  border: 1px solid rgba(180, 160, 120, 0.15);
+  border: 1px solid rgba(180, 160, 220, 0.16);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  position: relative;
+  z-index: 10;
+  overflow: visible;
 }
 
 .form {
   width: 100%;
+  position: relative;
 }
 
 .formRow {
   display: flex;
   gap: 15px;
   margin-bottom: 20px;
+  position: relative;
+}
+
+.formRow:first-of-type {
+  z-index: 20;
+}
+
+.formRow:last-of-type {
+  z-index: 15;
 }
 
 .formGroup {
   flex: 1;
   margin-bottom: 0;
+  position: relative;
 }
 
 select option {
-  background-color: #141410;
-  color: #d4c9b0;
+  background-color: #14131d;
+  color: #EFEEE8;
 }
 
 .label {
@@ -88,12 +103,12 @@ select option {
 .manualYear {
   width: 100%;
   padding: 11px 14px;
-  background-color: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(180, 160, 120, 0.2);
+  background-color: #181724;
+  border: 1px solid rgba(180, 160, 220, 0.2);
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.3);
+  color: #EFEEE8;
   font-family: 'Degular Regular', sans-serif;
-  font-weight: 300;
+  font-weight: 400;
   font-size: 14px;
   transition: all 0.3s ease;
   outline: none;
@@ -101,9 +116,9 @@ select option {
 
 .select:focus,
 .manualYear:focus {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: rgba(180, 160, 120, 0.4);
-  box-shadow: 0 0 12px rgba(180, 160, 120, 0.1);
+  background-color: #1e1d2c;
+  border-color: rgba(180, 160, 220, 0.5);
+  box-shadow: 0 0 12px rgba(180, 160, 220, 0.15);
 }
 
 .yearGroup {
@@ -131,29 +146,53 @@ select option {
   width: 100%;
   margin-top: 20px;
   padding-bottom: 40px;
+  position: relative;
+  z-index: 1;
 }
 
-.submitBtn,
-.resetBtn {
+.submitBtn {
   flex: 0 1 220px;
   padding: 14px 30px;
   border: none;
   border-radius: 25px;
   font-family: 'Degular Medium', sans-serif;
   font-size: 15px;
-  font-weight: 500;
-  color: white;
-  background: #FFFFFF80;
+  font-weight: 600;
+  color: #0d0c13;
+  background: #ffffff;
   cursor: pointer;
   transition: all 0.3s ease;
   letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
-.submitBtn:hover,
-.resetBtn:hover {
-  background: rgba(255, 255, 255, 0.6);
+.submitBtn:hover {
+  background: #f1edfa;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+}
+
+.resetBtn {
+  flex: 0 1 220px;
+  padding: 14px 30px;
+  border: 1px solid rgba(180, 160, 220, 0.25);
+  border-radius: 25px;
+  font-family: 'Degular Medium', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #EFEEE8;
+  background: #201e2c;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.resetBtn:hover {
+  background: #2b283b;
+  border-color: rgba(180, 160, 220, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Chrome, Safari, Edge, Opera */

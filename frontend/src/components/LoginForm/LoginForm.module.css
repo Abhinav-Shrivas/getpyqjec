@@ -20,9 +20,8 @@
 }
 
 .loginPage {
-  min-height: calc(100vh - 70px); /* Assuming navbar height */
-  background: radial-gradient(circle at bottom, rgba(180, 160, 120, 0.1) 0%, #0c0c0a 60%);
-  background-color: #0c0c0a;
+  min-height: calc(100vh - 70px);
+  background: transparent;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -50,13 +49,15 @@
 }
 
 .container {
-  background: rgba(25, 25, 20, 0.6);
+  background-color: #12111a;
   border-radius: 16px;
   padding: 40px 48px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
   max-width: 480px;
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(180, 160, 220, 0.16);
+  position: relative;
+  z-index: 2;
 }
 
 .heading {
@@ -88,8 +89,8 @@
 .input {
   width: 100%;
   padding: 12px 14px;
-  background-color: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background-color: #181724;
+  border: 1px solid rgba(180, 160, 220, 0.2);
   border-radius: 8px;
   color: #EFEEE8;
   font-family: 'Degular Regular', sans-serif;
@@ -103,8 +104,9 @@
 }
 
 .input:focus {
-  background-color: rgba(255, 255, 255, 0.06);
-  border-color: rgba(180, 160, 120, 0.4);
+  background-color: #1e1d2c;
+  border-color: rgba(180, 160, 220, 0.5);
+  box-shadow: 0 0 12px rgba(180, 160, 220, 0.15);
 }
 
 .errorText {
@@ -131,6 +133,8 @@
   justify-content: center;
   margin-top: 24px;
   margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
 }
 
 .submitBtn {
@@ -139,20 +143,21 @@
   padding: 12px 24px;
   border: none;
   border-radius: 25px;
-  background: #FFFFFF80;
-  color: white;
+  background: #ffffff;
+  color: #0d0c13;
   font-family: 'Degular Medium', sans-serif;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 .submitBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.6);
+  background: #f1edfa;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
 }
 
 .submitBtn:disabled {

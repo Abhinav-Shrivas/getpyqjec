@@ -41,7 +41,7 @@ media/
 # Project Data & Raw Archives (VERY IMPORTANT)
 # ==============================================================================
 data/
-files-getpyqjec-gdrive/
+
 
 # ==============================================================================
 # Node & Frontend Build
@@ -77,3 +77,9 @@ $RECYCLE.BIN/
 project_context.md
 GetPYQJEC_Interview_Prep.pdf
 IMPLEMENTATION_GUIDE.md
+DEPLOYMENT.md
+DEPLOYMENT_GUIDE.md
+*deployment*.md
+*DEPLOYMENT*.md
+*guide*.md
+!README.md

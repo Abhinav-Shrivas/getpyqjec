@@ -8,6 +8,7 @@ import { AuthProvider } from "./store/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 
 const UploadDataPage = lazy(() => import("./components/UploadPage/UploadPage"));
+const VerificationPage = lazy(() => import("./components/VerificationPage/VerificationPage"));
 const ForgotPassword = lazy(() => import("./components/ForgotPassword/ForgotPassword"));
 const ResetPassword = lazy(() => import("./components/ResetPassword/ResetPassword"));
 
@@ -25,6 +26,17 @@ const router = createBrowserRouter([
           <ProtectedRoute>
             <Suspense fallback={<PageFallback />}>
               <UploadDataPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+        errorElement: <ErrorPage />,
+      },
+      {
+        path: "verify",
+        element: (
+          <ProtectedRoute>
+            <Suspense fallback={<PageFallback />}>
+              <VerificationPage />
             </Suspense>
           </ProtectedRoute>
         ),

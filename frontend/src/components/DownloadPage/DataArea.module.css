@@ -22,13 +22,16 @@
 .card {
   width: 100%;
   max-width: 700px;
-  background: rgba(25, 25, 20, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: #12111a;
+  border: 1px solid rgba(180, 160, 220, 0.16);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
   border-radius: 16px;
   padding: 28px 32px;
   display: flex;
   flex-direction: column;
   gap: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .card-body {
@@ -45,7 +48,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: #181724;
+  border: 1px solid rgba(180, 160, 220, 0.2);
   border-radius: 12px;
 }
 
@@ -136,22 +140,23 @@
   width: 100%;
   max-width: 240px;
   padding: 11px 28px;
-  background: #FFFFFF80;
+  background: #ffffff;
   border: none;
   border-radius: 25px;
-  color: white;
+  color: #0d0c13;
   font-family: 'Degular Medium', sans-serif;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 .download-btn:hover {
-  background: rgba(255, 255, 255, 0.6);
+  background: #f1edfa;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
 }
 
 .download-btn:active {

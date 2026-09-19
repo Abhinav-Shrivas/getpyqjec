@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import styles from "./UploadForm.module.css";
 import {
   branches,
@@ -7,11 +7,17 @@ import {
   ordinals,
 } from "../../information";
 import createPdfFromImages from "../../imgTopdf";
-import ScrollYearPicker from "../ScrollYearPicker/ScrollYearPicker";
+import CustomSelect from "../CustomSelect/CustomSelect";
+import { fetchExistingPYQs } from "../../http";
 
 // Generate current year + last 10 years (descending)
 const currentYear = new Date().getFullYear();
 const allYears = Array.from({ length: 11 }, (_, i) => currentYear - i);
+
+const ALL_SESSIONS = [
+  { value: "April", label: "April" },
+  { value: "December", label: "December" },
+];
 
 const initialState = {
   semester: "",
@@ -28,7 +34,117 @@ export default function UploadFormPYQ({ uploadFn }) {
   const [upload, setUpload] = useState(false);
   const [dragIndex, setDragIndex] = useState(null);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [existingPYQs, setExistingPYQs] = useState([]);
   const fileInputRef = useRef(null);
+
+  // Fetch existing papers whenever semester and branch change
+  const refreshExisting = useCallback(() => {
+    if (!selectedValues.semester || !selectedValues.branch) {
+      setExistingPYQs([]);
+      return;
+    }
+    fetchExistingPYQs(selectedValues.branch, selectedValues.semester).then((data) => {
+      if (data?.existing) {
+        setExistingPYQs(data.existing);
+      }
+    });
+  }, [selectedValues.branch, selectedValues.semester]);
+
+  useEffect(() => {
+    refreshExisting();
+  }, [refreshExisting]);
+
+  // Existing records for currently selected subject
+  const currentSubjectExisting = useMemo(() => {
+    if (!selectedValues.subject) return [];
+    return existingPYQs.filter(
+      (item) => item.subject_code?.toUpperCase() === selectedValues.subject?.toUpperCase()
+    );
+  }, [existingPYQs, selectedValues.subject]);
+
+  // Compute available Year options — omitting years that already have full data
+  const availableYearOptions = useMemo(() => {
+    if (!selectedValues.subject) {
+      return allYears.map((y) => ({ value: String(y), label: String(y) }));
+    }
+
+    return allYears
+      .filter((year) => {
+        const yearRecords = currentSubjectExisting.filter((r) => r.year === year);
+        // If session is already selected, omit this year if it already has that session
+        if (selectedValues.session) {
+          const hasSession = yearRecords.some(
+            (r) => r.exam_session?.toLowerCase() === selectedValues.session?.toLowerCase()
+          );
+          return !hasSession;
+        }
+        // If no session selected yet: omit if ALL sessions are already uploaded
+        const uploadedSessions = new Set(yearRecords.map((r) => r.exam_session?.toLowerCase()));
+        return !(uploadedSessions.has("april") && uploadedSessions.has("december"));
+      })
+      .map((year) => {
+        const yearRecords = currentSubjectExisting.filter((r) => r.year === year);
+        const uploadedSessions = new Set(yearRecords.map((r) => r.exam_session?.toLowerCase()));
+        if (!selectedValues.session) {
+          if (uploadedSessions.has("december") && !uploadedSessions.has("april")) {
+            return { value: String(year), label: `${year} (April only)` };
+          }
+          if (uploadedSessions.has("april") && !uploadedSessions.has("december")) {
+            return { value: String(year), label: `${year} (December only)` };
+          }
+        }
+        return { value: String(year), label: String(year) };
+      });
+  }, [selectedValues.subject, selectedValues.session, currentSubjectExisting]);
+
+  // Compute available Session options — omitting sessions already uploaded for this (subject, year)
+  const availableSessionOptions = useMemo(() => {
+    if (!selectedValues.subject || !selectedValues.year) {
+      return ALL_SESSIONS;
+    }
+
+    const selectedYearNum = Number(selectedValues.year);
+    const existingSessionsForYear = new Set(
+      currentSubjectExisting
+        .filter((r) => r.year === selectedYearNum)
+        .map((r) => r.exam_session?.toLowerCase())
+    );
+
+    return ALL_SESSIONS.filter(
+      (s) => !existingSessionsForYear.has(s.value.toLowerCase())
+    );
+  }, [selectedValues.subject, selectedValues.year, currentSubjectExisting]);
+
+  // Auto-clear year if selected year is no longer available
+  useEffect(() => {
+    if (selectedValues.year && availableYearOptions.length > 0) {
+      const isYearValid = availableYearOptions.some(
+        (opt) => opt.value === String(selectedValues.year)
+      );
+      if (!isYearValid) {
+        setSelectedValues((prev) => ({ ...prev, year: "", session: "" }));
+      }
+    }
+  }, [availableYearOptions, selectedValues.year]);
+
+  // Auto-adjust session if selected session is no longer available for the year
+  useEffect(() => {
+    if (selectedValues.year && availableSessionOptions.length > 0) {
+      const isSessionValid = availableSessionOptions.some(
+        (opt) => opt.value === selectedValues.session
+      );
+      if (!isSessionValid) {
+        if (availableSessionOptions.length === 1) {
+          setSelectedValues((prev) => ({
+            ...prev,
+            session: availableSessionOptions[0].value,
+          }));
+        } else {
+          setSelectedValues((prev) => ({ ...prev, session: "" }));
+        }
+      }
+    }
+  }, [availableSessionOptions, selectedValues.year, selectedValues.session]);
 
   // Detect file type from selected files
   const detectedType = useMemo(() => {
@@ -186,6 +302,7 @@ export default function UploadFormPYQ({ uploadFn }) {
 
     try {
       await uploadFn(formData);
+      refreshExisting();
       setSelectedValues(initialState);
       event.target.reset();
       setUpload(false);
@@ -220,124 +337,127 @@ export default function UploadFormPYQ({ uploadFn }) {
           className={styles.form}
         >
           {/* Row 1: Semester, Branch, Subject */}
+          {/* Row 1: Semester, Branch, Subject */}
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
               <label htmlFor="semester" className={styles.label}>
                 Semester
               </label>
-              <select
+              <CustomSelect
                 id="semester"
                 name="semester"
                 value={selectedValues.semester}
-                className={styles.select}
+                placeholder="Select Semester"
+                options={semesters.map((sem) => ({
+                  value: String(sem),
+                  label: `Semester ${sem}`,
+                }))}
                 required
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (Number(value) > 2) {
+                onChange={(val) => {
+                  if (Number(val) > 2) {
                     setSelectedValues((prev) => ({
                       ...prev,
-                      semester: value,
+                      semester: val,
                       branch: "",
                       subject: "",
                     }));
                   } else {
                     setSelectedValues((prev) => ({
                       ...prev,
-                      semester: value,
+                      semester: val,
                       branch: "CommonForAllBranches",
                       subject: "",
                     }));
                   }
                 }}
-              >
-                <option value="" disabled hidden>
-                  Select Semester
-                </option>
-                {semesters.map((sem) => (
-                  <option key={sem} value={sem}>
-                    {sem}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div className={styles.formGroup}>
               <label htmlFor="branch" className={styles.label}>
                 Branch
               </label>
-              <select
+              <CustomSelect
                 id="branch"
                 name="branch"
                 value={selectedValues.branch}
-                className={styles.select}
+                placeholder="Select Branch"
+                options={
+                  selectedValues.semester === "1" || selectedValues.semester === "2"
+                    ? [{ value: "CommonForAllBranches", label: "Common For All Branches" }]
+                    : Object.entries(branches).map(([short, full]) => ({
+                        value: short,
+                        label: full,
+                      }))
+                }
                 required
-                onChange={(e) =>
+                disabled={!selectedValues.semester}
+                onChange={(val) =>
                   setSelectedValues((prev) => ({
                     ...prev,
-                    branch: e.target.value,
+                    branch: val,
                     subject: "",
                   }))
                 }
-              >
-                {selectedValues.semester == 1 ||
-                selectedValues.semester == 2 ? (
-                  <option value="CommonForAllBranches">
-                    Common For All Branches
-                  </option>
-                ) : (
-                  <>
-                    <option value="" disabled hidden>
-                      Select Branch
-                    </option>
-                    {Object.entries(branches).map(([short, full]) => {
-                      return (
-                        <option key={short} value={short}>
-                          {full}
-                        </option>
-                      );
-                    })}
-                  </>
-                )}
-              </select>
+              />
             </div>
 
             <div className={styles.formGroup}>
               <label htmlFor="subject" className={styles.label}>
                 Subject
               </label>
-              <select
+              <CustomSelect
                 id="subject"
                 name="subject"
                 value={selectedValues.subject}
-                className={styles.select}
-                onChange={(e) =>
+                placeholder={!selectedValues.branch ? "Select Branch First" : "Select Subject"}
+                options={subjectsToShow.map((subject) => ({
+                  value: subject[1],
+                  label: subject[0],
+                }))}
+                required
+                disabled={!selectedValues.branch}
+                onChange={(val) =>
                   setSelectedValues((prev) => ({
                     ...prev,
-                    subject: e.target.value,
+                    subject: val,
+                    year: "",
+                    session: "",
                   }))
                 }
-                required
-              >
-                <option value="" disabled hidden>
-                  Select the subject
-                </option>
-                {subjectsToShow.map((subject) => (
-                  <option key={subject[0]} value={subject[1]}>
-                    {subject[0]}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
+
+          {/* Existing Papers Helper Notice */}
+          {selectedValues.subject && currentSubjectExisting.length > 0 && (
+            <div className={styles.existingNotice}>
+              <span className={styles.existingNoticeLabel}>Already in database:</span>
+              {currentSubjectExisting
+                .slice()
+                .sort((a, b) => b.year - a.year)
+                .map((item) => `${item.year} (${item.exam_session})`)
+                .join(", ")}
+            </div>
+          )}
 
           {/* Row 2: Year, Session, Upload Papers */}
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Year</label>
-              <ScrollYearPicker
-                years={allYears}
-                value={selectedValues.year}
+              <CustomSelect
                 name="year"
+                value={selectedValues.year}
+                placeholder={
+                  !selectedValues.subject
+                    ? "Select Subject First"
+                    : availableYearOptions.length === 0
+                    ? "All Years Uploaded"
+                    : "Select Year"
+                }
+                options={availableYearOptions}
+                required
+                disabled={!selectedValues.subject || availableYearOptions.length === 0}
                 onChange={(val) =>
                   setSelectedValues((prev) => ({
                     ...prev,
@@ -351,25 +471,27 @@ export default function UploadFormPYQ({ uploadFn }) {
               <label htmlFor="session" className={styles.label}>
                 Session
               </label>
-              <select
+              <CustomSelect
                 id="session"
                 name="session"
                 value={selectedValues.session}
-                className={styles.select}
+                placeholder={
+                  !selectedValues.year
+                    ? "Select Year First"
+                    : availableSessionOptions.length === 0
+                    ? "No Sessions Available"
+                    : "Select Session"
+                }
+                options={availableSessionOptions}
                 required
-                onChange={(e) => {
+                disabled={!selectedValues.year || availableSessionOptions.length === 0}
+                onChange={(val) => {
                   setSelectedValues((prev) => ({
                     ...prev,
-                    session: e.target.value,
+                    session: val,
                   }));
                 }}
-              >
-                <option value="" disabled hidden>
-                  Select Session
-                </option>
-                <option value="April">April</option>
-                <option value="December">December</option>
-              </select>
+              />
             </div>
 
             <div className={styles.formGroup}>
@@ -413,17 +535,26 @@ export default function UploadFormPYQ({ uploadFn }) {
                   )}
                 </>
               ) : (
-                <input
-                  type="file"
-                  id="uploadFile"
-                  className={styles.pdfFile}
-                  name="uploadFile"
-                  accept=".pdf,image/png,image/jpeg"
-                  multiple
-                  required
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                />
+                <>
+                  <input
+                    type="file"
+                    id="uploadFile"
+                    style={{ display: "none" }}
+                    name="uploadFile"
+                    accept=".pdf,image/png,image/jpeg"
+                    multiple
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    type="button"
+                    className={styles.customFileInputBtn}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <span className={styles.uploadIconMini}>📁</span>
+                    <span>Choose PDF or Images</span>
+                  </button>
+                </>
               )}
 
               {errorMessage && (
