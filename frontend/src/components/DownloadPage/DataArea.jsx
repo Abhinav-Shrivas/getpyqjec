@@ -1,14 +1,13 @@
 import classes from "./DataArea.module.css";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import ErrorPage from "../ErrorPage/Error";
 import pdfIcon from "../../assets/pdficon.svg";
 
-export default function DataArea({ url }) {
+export default function DataArea({ url, onClose }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const errorRef = useRef();
 
   // Take the first file from the array
   const file = url;
@@ -40,79 +39,86 @@ export default function DataArea({ url }) {
     }
   }
 
-  useEffect(() => {
-    if (error) {
-      errorRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [error]);
+  if (error) {
+    return (
+      <ErrorPage
+        message={errorMessage}
+        onClose={() => setError(false)}
+      />
+    );
+  }
 
   if (!file) return null;
 
   return (
-    <>
-      <div className={classes["main-container"]}>
-        <div className={classes.card}>
-          <div className={classes["card-body"]}>
-            {/* PDF Icon */}
-            <div className={classes["icon-area"]}>
-              <img
-                src={pdfIcon}
-                alt="PDF"
-                className={classes["pdf-icon-img"]}
-              />
-            </div>
+    <div className={`${classes["main-container"]} ${classes.modalMode}`}>
+      <div className={classes.card}>
+        {onClose && (
+          <button
+            type="button"
+            className={classes.closeBtn}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        )}
 
-            {/* File Info */}
-            <div className={classes["file-info"]}>
-              <h2 className={classes["file-name"]}>{file.name}</h2>
-              <div className={classes["file-meta"]}>
-                {/* Missing years warning badge */}
-                {file.missingYears && file.missingYears.length > 0 && (
-                  <span className={classes["meta-badge"]}>
-                    <span className={classes["warning-dot"]}></span>
-                    PYQ of {file.missingYears.join(", ")} not available.
-                  </span>
-                )}
-                <span className={classes["meta-badge"]}>
-                  <span className={classes["meta-dot"]}></span>
-                  Ready to download.
-                </span>
-              </div>
-            </div>
+        <div className={classes["card-body"]}>
+          {/* PDF Icon */}
+          <div className={classes["icon-area"]}>
+            <img
+              src={pdfIcon}
+              alt="PDF"
+              className={classes["pdf-icon-img"]}
+            />
           </div>
 
-          {/* Download Button */}
-          <div className={classes["download-area"]}>
-            <button
-              className={`${classes["download-btn"]} ${isDownloading ? classes["downloading"] : ""
-                } ${isComplete ? classes["complete"] : ""}`}
-              onClick={() => downloadFile(file.url, file.name)}
-              disabled={isDownloading}
-            >
-              {isDownloading ? (
-                <span className={classes["btn-content"]}>
-                  <span className={classes.spinner}></span>
-                  Downloading...
-                </span>
-              ) : isComplete ? (
-                <span className={classes["btn-content"]}>
-                  <span className={classes["check-icon"]}>✓</span>
-                  Downloaded!
-                </span>
-              ) : (
-                <span className={classes["btn-content"]}>
-                  Download
+          {/* File Info */}
+          <div className={classes["file-info"]}>
+            <h2 className={classes["file-name"]}>{file.name}</h2>
+            <div className={classes["file-meta"]}>
+              {/* Missing years warning badge */}
+              {file.missingYears && file.missingYears.length > 0 && (
+                <span className={classes["meta-badge"]}>
+                  <span className={classes["warning-dot"]}></span>
+                  PYQ of {file.missingYears.join(", ")} not available.
                 </span>
               )}
-            </button>
+              <span className={classes["meta-badge"]}>
+                <span className={classes["meta-dot"]}></span>
+                Ready to download.
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-      {error && (
-        <div ref={errorRef}>
-          <ErrorPage message={errorMessage}></ErrorPage>
+
+        {/* Download Button */}
+        <div className={classes["download-area"]}>
+          <button
+            className={`${classes["download-btn"]} ${isDownloading ? classes["downloading"] : ""
+              } ${isComplete ? classes["complete"] : ""}`}
+            onClick={() => downloadFile(file.url, file.name)}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <span className={classes["btn-content"]}>
+                <span className={classes.spinner}></span>
+                Downloading...
+              </span>
+            ) : isComplete ? (
+              <span className={classes["btn-content"]}>
+                <span className={classes["check-icon"]}>✓</span>
+                Downloaded!
+              </span>
+            ) : (
+              <span className={classes["btn-content"]}>
+                Download
+              </span>
+            )}
+          </button>
         </div>
-      )}
-    </>
+      </div>
+    </div>
   );
 }

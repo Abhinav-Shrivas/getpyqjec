@@ -3,8 +3,8 @@ import styles from "./Background.module.css";
 
 // Denser, finer dot grid specifications
 const GRID_SPACING = 16;
-const BASE_DOT_RADIUS = 0.8;
-const MAX_DOT_RADIUS = 2.4;
+const BASE_DOT_RADIUS = 1.05;
+const MAX_DOT_RADIUS = 2.6;
 const PARALLAX_FACTOR = 0.28; // Smooth, restrained upward scroll ratio
 
 // Wave & Trail physical constants
@@ -125,7 +125,7 @@ export default function Background() {
       // High-performance batched drawing arrays
       // Baseline undisturbed dots are drawn in a single path
       ctx.beginPath();
-      ctx.fillStyle = "rgba(172, 156, 212, 0.20)";
+      ctx.fillStyle = "rgba(182, 168, 228, 0.42)";
 
       const disturbedDots = [];
 
@@ -188,7 +188,7 @@ export default function Background() {
           if (maxEffect > 0.02) {
             // Disturbed dot influenced by trail or wave
             const radius = BASE_DOT_RADIUS + (MAX_DOT_RADIUS - BASE_DOT_RADIUS) * maxEffect;
-            const alpha = 0.20 + 0.50 * maxEffect;
+            const alpha = 0.40 + 0.55 * maxEffect;
             const rVal = Math.round(172 + (230 - 172) * maxEffect);
             const gVal = Math.round(156 + (210 - 156) * maxEffect);
             const bVal = Math.round(212 + (255 - 212) * maxEffect);

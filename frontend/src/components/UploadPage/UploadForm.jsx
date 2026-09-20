@@ -62,7 +62,7 @@ export default function UploadFormPYQ({ uploadFn }) {
     );
   }, [existingPYQs, selectedValues.subject]);
 
-  // Compute available Year options — omitting years that already have full data
+  // Compute available Year options — omitting years that already have both sessions (or the selected session)
   const availableYearOptions = useMemo(() => {
     if (!selectedValues.subject) {
       return allYears.map((y) => ({ value: String(y), label: String(y) }));
@@ -70,31 +70,29 @@ export default function UploadFormPYQ({ uploadFn }) {
 
     return allYears
       .filter((year) => {
-        const yearRecords = currentSubjectExisting.filter((r) => r.year === year);
+        const yearRecords = currentSubjectExisting.filter(
+          (r) => Number(r.year) === Number(year)
+        );
+        const uploadedSessions = new Set(
+          yearRecords.map((r) => r.exam_session?.trim().toLowerCase())
+        );
+
+        // If both april and december session pyq is present, the whole year will NOT be listed
+        if (uploadedSessions.has("april") && uploadedSessions.has("december")) {
+          return false;
+        }
+
         // If session is already selected, omit this year if it already has that session
         if (selectedValues.session) {
-          const hasSession = yearRecords.some(
-            (r) => r.exam_session?.toLowerCase() === selectedValues.session?.toLowerCase()
+          const hasSession = uploadedSessions.has(
+            selectedValues.session.trim().toLowerCase()
           );
           return !hasSession;
         }
-        // If no session selected yet: omit if ALL sessions are already uploaded
-        const uploadedSessions = new Set(yearRecords.map((r) => r.exam_session?.toLowerCase()));
-        return !(uploadedSessions.has("april") && uploadedSessions.has("december"));
+
+        return true;
       })
-      .map((year) => {
-        const yearRecords = currentSubjectExisting.filter((r) => r.year === year);
-        const uploadedSessions = new Set(yearRecords.map((r) => r.exam_session?.toLowerCase()));
-        if (!selectedValues.session) {
-          if (uploadedSessions.has("december") && !uploadedSessions.has("april")) {
-            return { value: String(year), label: `${year} (April only)` };
-          }
-          if (uploadedSessions.has("april") && !uploadedSessions.has("december")) {
-            return { value: String(year), label: `${year} (December only)` };
-          }
-        }
-        return { value: String(year), label: String(year) };
-      });
+      .map((year) => ({ value: String(year), label: String(year) }));
   }, [selectedValues.subject, selectedValues.session, currentSubjectExisting]);
 
   // Compute available Session options — omitting sessions already uploaded for this (subject, year)
@@ -106,12 +104,12 @@ export default function UploadFormPYQ({ uploadFn }) {
     const selectedYearNum = Number(selectedValues.year);
     const existingSessionsForYear = new Set(
       currentSubjectExisting
-        .filter((r) => r.year === selectedYearNum)
-        .map((r) => r.exam_session?.toLowerCase())
+        .filter((r) => Number(r.year) === selectedYearNum)
+        .map((r) => r.exam_session?.trim().toLowerCase())
     );
 
     return ALL_SESSIONS.filter(
-      (s) => !existingSessionsForYear.has(s.value.toLowerCase())
+      (s) => !existingSessionsForYear.has(s.value.trim().toLowerCase())
     );
   }, [selectedValues.subject, selectedValues.year, currentSubjectExisting]);
 
@@ -429,18 +427,6 @@ export default function UploadFormPYQ({ uploadFn }) {
             </div>
           </div>
 
-          {/* Existing Papers Helper Notice */}
-          {selectedValues.subject && currentSubjectExisting.length > 0 && (
-            <div className={styles.existingNotice}>
-              <span className={styles.existingNoticeLabel}>Already in database:</span>
-              {currentSubjectExisting
-                .slice()
-                .sort((a, b) => b.year - a.year)
-                .map((item) => `${item.year} (${item.exam_session})`)
-                .join(", ")}
-            </div>
-          )}
-
           {/* Row 2: Year, Session, Upload Papers */}
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
@@ -563,6 +549,28 @@ export default function UploadFormPYQ({ uploadFn }) {
             </div>
           </div>
 
+          {/* Note on lower side of box */}
+          <div className={styles.dbNote}>
+            <span className={styles.dbNoteIcon}>
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+            </span>
+            <span>
+              Note: If a year or session is not listed, it is already present in the database.
+            </span>
+          </div>
         </form>
       </div>
       <div className={styles.buttonGroup}>
@@ -578,6 +586,24 @@ export default function UploadFormPYQ({ uploadFn }) {
           Reset
         </button>
       </div>
+
+      {/* Uploading progress modal */}
+      {upload && (
+        <div className={styles.uploadOverlay}>
+          <div className={styles.uploadCard}>
+            <div className={styles.spinner} />
+            <h3 className={styles.uploadTitle}>Uploading PYQ...</h3>
+            <p className={styles.uploadSubtitle}>
+              {detectedType === "image" && selectedValues.files.length > 1
+                ? "Converting images to PDF & uploading, please wait"
+                : "Uploading your question paper, please wait"}
+            </p>
+            <div className={styles.progressContainer}>
+              <div className={styles.progressBar} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image reorder overlay */}
       {showOverlay && detectedType === "image" && selectedValues.files.length > 0 && (

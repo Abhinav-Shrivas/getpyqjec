@@ -32,6 +32,7 @@ const LoadingPage = () => {
     <div className={styles.body}>
       <div className={styles.loadingContainer}>
         {/* Spinner Animation */}
+
         {animationType === 'spinner' && (
           <div className={styles.spinner}></div>
         )}

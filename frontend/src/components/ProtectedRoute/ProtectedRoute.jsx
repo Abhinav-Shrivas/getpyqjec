@@ -17,7 +17,7 @@ export default function ProtectedRoute({ children }) {
       >
         <h2 style={{ 
           marginBottom: "12px", 
-          fontFamily: "'Outfit Medium', sans-serif",
+          fontFamily: "'Degular Medium', sans-serif",
           fontWeight: 500,
           fontSize: "2rem",
           color: "#EFEEE8"

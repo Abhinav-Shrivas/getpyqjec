@@ -42,17 +42,30 @@
   letter-spacing: 0.3px;
 }
 
+/* Main glass card */
 .container {
   margin-left: auto;
   margin-right: auto;
   margin-bottom: 10px;
-  background-color: #12111a;
-  border-radius: 16px;
-  padding: 30px 35px;
   max-width: 750px;
   width: 100%;
-  border: 1px solid rgba(180, 160, 220, 0.16);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.01) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  backdrop-filter: blur(1.5px) saturate(130%);
+  -webkit-backdrop-filter: blur(1.5px) saturate(130%);
+  border-radius: 24px;
+  padding: 34px 40px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.38);
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.15);
   position: relative;
   z-index: 10;
   overflow: visible;
@@ -95,30 +108,32 @@ select option {
   margin-bottom: 8px;
   font-family: 'Degular Regular', sans-serif;
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .select,
 .manualYear {
   width: 100%;
   padding: 11px 14px;
-  background-color: #181724;
-  border: 1px solid rgba(180, 160, 220, 0.2);
+  background: rgba(14, 12, 22, 0.7);
+  border: 1px solid rgba(180, 160, 220, 0.22);
   border-radius: 8px;
   color: #EFEEE8;
   font-family: 'Degular Regular', sans-serif;
   font-weight: 400;
   font-size: 14px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   outline: none;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
 }
 
 .select:focus,
 .manualYear:focus {
-  background-color: #1e1d2c;
-  border-color: rgba(180, 160, 220, 0.5);
-  box-shadow: 0 0 12px rgba(180, 160, 220, 0.15);
+  background: rgba(22, 18, 34, 0.95);
+  border-color: rgba(168, 85, 247, 0.7);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
 }
 
 .yearGroup {
@@ -214,6 +229,7 @@ select option {
 
   .container {
     padding: 24px 18px;
+    border-radius: 20px;
   }
 
   .heading {

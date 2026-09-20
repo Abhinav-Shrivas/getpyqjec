@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../store/AuthContext";
 import {
@@ -12,6 +12,13 @@ import {
   deleteVerificationDocument,
 } from "../../http";
 import classes from "./VerificationPage.module.css";
+
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "All Statuses" },
+  { value: "pending", label: "Pending Review" },
+  { value: "verified", label: "Verified" },
+  { value: "rejected", label: "Rejected" },
+];
 
 export default function VerificationPage() {
   const { user, isAdmin, updateVerificationStatus } = useAuth();
@@ -27,6 +34,10 @@ export default function VerificationPage() {
 
   // Admin view states
   const [activeTab, setActiveTab] = useState("student"); // "student" | "admin"
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const [indicatorReady, setIndicatorReady] = useState(false);
+  const studentTabRef = useRef(null);
+  const adminTabRef = useRef(null);
   const [adminSubmissions, setAdminSubmissions] = useState([]);
   const [adminFilter, setAdminFilter] = useState("");
   const [adminSearch, setAdminSearch] = useState("");
@@ -230,6 +241,39 @@ export default function VerificationPage() {
     }
   }
 
+  const updateIndicator = useCallback(() => {
+    const activeEl = activeTab === "student" ? studentTabRef.current : adminTabRef.current;
+    if (activeEl) {
+      setIndicatorStyle({
+        left: activeEl.offsetLeft,
+        width: activeEl.offsetWidth,
+      });
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      updateIndicator();
+      const timer = setTimeout(() => setIndicatorReady(true), 40);
+      window.addEventListener("resize", updateIndicator);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener("resize", updateIndicator);
+      };
+    }
+  }, [isAdmin, updateIndicator]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    const targetEl = tab === "student" ? studentTabRef.current : adminTabRef.current;
+    if (targetEl) {
+      setIndicatorStyle({
+        left: targetEl.offsetLeft,
+        width: targetEl.offsetWidth,
+      });
+    }
+  };
+
   const currentStatus = statusData?.status || user?.verification_status || "unverified";
 
   return (
@@ -242,15 +286,25 @@ export default function VerificationPage() {
 
         {isAdmin && (
           <div className={classes.tabBar}>
+            <div
+              className={`${classes.tabIndicator} ${indicatorReady ? classes.tabIndicatorTransition : ""}`}
+              style={{
+                transform: `translateX(${indicatorStyle.left}px)`,
+                width: `${indicatorStyle.width}px`,
+                opacity: indicatorStyle.width ? 1 : 0,
+              }}
+            />
             <button
+              ref={studentTabRef}
               className={`${classes.tabBtn} ${activeTab === "student" ? classes.activeTab : ""}`}
-              onClick={() => setActiveTab("student")}
+              onClick={() => handleTabChange("student")}
             >
               My Verification
             </button>
             <button
+              ref={adminTabRef}
               className={`${classes.tabBtn} ${activeTab === "admin" ? classes.activeTab : ""}`}
-              onClick={() => setActiveTab("admin")}
+              onClick={() => handleTabChange("admin")}
             >
               Admin Review Queue
             </button>
@@ -274,7 +328,27 @@ export default function VerificationPage() {
                     {currentStatus === "verified" && "✓ Verified Student"}
                     {currentStatus === "pending" && "⏳ Pending Review"}
                     {currentStatus === "rejected" && "✕ Verification Rejected"}
-                    {currentStatus === "unverified" && "🔒 Action Required: Not Verified"}
+                    {currentStatus === "unverified" && (
+                      <span className={classes.badgeWithIcon}>
+                        <span className={classes.lockBadge}>
+                          <svg
+                            className={classes.badgeLockIcon}
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                        </span>
+                        Action Required: Not Verified
+                      </span>
+                    )}
                   </span>
                   {statusData?.submitted_at && (
                     <span className={classes.statusDate}>
@@ -412,16 +486,40 @@ export default function VerificationPage() {
         <div className={classes.adminContent}>
           <div className={classes.adminToolbar}>
             <div className={classes.filterGroup}>
-              <select
-                className={classes.select}
-                value={adminFilter}
-                onChange={(e) => setAdminFilter(e.target.value)}
-              >
-                <option value="">All Statuses</option>
-                <option value="pending">Pending Review</option>
-                <option value="verified">Verified</option>
-                <option value="rejected">Rejected</option>
-              </select>
+              <div className={classes.selectWrapper}>
+                <span className={classes.selectLabel}>
+                  {STATUS_FILTER_OPTIONS.find((opt) => opt.value === adminFilter)?.label || "All Statuses"}
+                </span>
+                <svg
+                  className={classes.selectArrow}
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#EFEEE8"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+                <select
+                  className={classes.nativeSelect}
+                  value={adminFilter}
+                  onChange={(e) => setAdminFilter(e.target.value)}
+                  aria-label="Filter status"
+                >
+                  {STATUS_FILTER_OPTIONS.map((opt) => (
+                    <option
+                      key={opt.value}
+                      value={opt.value}
+                      style={{ background: "#181726", color: "#EFEEE8" }}
+                    >
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className={classes.searchGroup}>
               <input

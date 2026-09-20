@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import UploadForm from "./UploadForm";
 import { uploadData } from "../../http";
 import ErrorPage from "../ErrorPage/Error";
-import VerificationBanner from "../VerificationBanner/VerificationBanner";
 import { useAuth } from "../../store/AuthContext";
 import classes from "./UploadForm.module.css";
 
@@ -11,9 +10,6 @@ export default function UploadDataPage() {
   const [error, setError] = useState();
   const { logout, user, isVerified, isAdmin, refreshVerificationStatus } = useAuth();
   const [checkingVerification, setCheckingVerification] = useState(false);
-
-  // Refs for auto-scroll
-  const errorRef = useRef(null);
 
   useEffect(() => {
     // Refresh verification status on mount in case it was updated recently
@@ -37,13 +33,6 @@ export default function UploadDataPage() {
     }
   }
 
-  // Auto scroll when error happens
-  useEffect(() => {
-    if (error) {
-      errorRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [error]);
-
   const canUpload = isVerified || isAdmin;
 
   return (
@@ -55,14 +44,26 @@ export default function UploadDataPage() {
             Share previous year question papers with fellow students
           </p>
 
-          <VerificationBanner />
-
           <div className={classes.container} style={{ textAlign: "center", padding: "48px 30px" }}>
-            <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🔒</div>
-            <h2 style={{ fontFamily: "Outfit Medium, sans-serif", fontSize: "1.5rem", marginBottom: "12px", color: "#EFEEE8" }}>
+            <div className={classes.lockIconWrapper}>
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <h2 style={{ fontFamily: "'Degular Medium', sans-serif", fontSize: "1.6rem", fontWeight: 500, marginBottom: "12px", color: "#EFEEE8", letterSpacing: "0.3px" }}>
               Student Verification Required
             </h2>
-            <p style={{ color: "rgba(239, 238, 232, 0.75)", maxWidth: "460px", margin: "0 auto 24px", lineHeight: "1.5" }}>
+            <p style={{ fontFamily: "'Degular Regular', sans-serif", color: "rgba(239, 238, 232, 0.75)", maxWidth: "460px", margin: "0 auto 24px", lineHeight: "1.5" }}>
               To ensure the authenticity and quality of question papers uploaded to GetPYQ, uploading is restricted to verified Jabalpur Engineering College students.
             </p>
             <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
@@ -76,8 +77,17 @@ export default function UploadDataPage() {
         <>
           <UploadForm uploadFn={uploadDataFn} />
           {error && (
-            <div ref={errorRef}>
-              <ErrorPage message={error.message} />
+            <div
+              className={classes.uploadOverlay}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setError(null);
+              }}
+              role="dialog"
+              aria-modal="true"
+            >
+              <div style={{ maxWidth: "520px", width: "100%", margin: "auto" }}>
+                <ErrorPage message={error.message} onClose={() => setError(null)} />
+              </div>
             </div>
           )}
         </>

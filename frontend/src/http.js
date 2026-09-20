@@ -51,7 +51,16 @@ const fetchUrls = async (queries) => {
   const res = await fetch(`${API_BASE}/download/?` + queries);
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to fetch data");
+    let errorMsg = errorData.error || "Failed to fetch data";
+    if (
+      typeof errorMsg === "string" &&
+      (errorMsg.toLowerCase().includes("nosuchkey") ||
+        errorMsg.toLowerCase().includes("not exist") ||
+        errorMsg.toLowerCase().includes("failed to download object"))
+    ) {
+      errorMsg = "PYQ missing";
+    }
+    throw new Error(errorMsg);
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

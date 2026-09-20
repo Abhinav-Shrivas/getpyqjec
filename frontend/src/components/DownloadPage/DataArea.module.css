@@ -1,14 +1,14 @@
 @font-face {
-  font-family: 'Degular Regular';
-  src: url('../../assets/degular-font-family-1737058454-0/Degular-Regular.otf') format('opentype');
-  font-weight: 400;
+  font-family: 'Degular Medium';
+  src: url('../../assets/degular-font-family-1737058454-0/Degular-Medium.otf') format('opentype');
+  font-weight: 500;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Outfit Medium';
-  src: url('../../assets/Outfit/static/Outfit-Medium.ttf') format('truetype');
-  font-weight: 500;
+  font-family: 'Degular Regular';
+  src: url('../../assets/degular-font-family-1737058454-0/Degular-Regular.otf') format('opentype');
+  font-weight: 400;
   font-style: normal;
 }
 
@@ -18,21 +18,71 @@
   padding: 40px 20px;
 }
 
+.modalMode {
+  padding: 0;
+  width: 100%;
+}
+
 /* ── Card ── */
 .card {
   width: 100%;
   max-width: 700px;
-  background-color: #12111a;
-  border: 1px solid rgba(180, 160, 220, 0.16);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
-  border-radius: 16px;
-  padding: 28px 32px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.01) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  backdrop-filter: blur(1.5px) saturate(130%);
+  -webkit-backdrop-filter: blur(1.5px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.38);
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.15);
+  border-radius: 24px;
+  padding: 62px 40px 34px;
   display: flex;
   flex-direction: column;
   gap: 0;
   position: relative;
-  z-index: 2;
+  z-index: 10;
 }
+
+.closeBtn {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(239, 238, 232, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 25;
+}
+
+
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+.closeBtn:active {
+  transform: scale(0.95);
+}
+
 
 .card-body {
   display: flex;
@@ -48,9 +98,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #181724;
-  border: 1px solid rgba(180, 160, 220, 0.2);
-  border-radius: 12px;
+  background: rgba(14, 12, 22, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 .pdf-icon-img {
@@ -67,20 +120,25 @@
   align-items: center;
   gap: 14px;
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 20px 24px;
+  background: rgba(14, 12, 22, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12), 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 .file-name {
-  font-family: 'Outfit Medium', sans-serif;
+  font-family: 'Degular Medium', sans-serif;
   font-weight: 500;
-  font-size: 1.2em;
+  font-size: 1.3em;
   color: #EFEEE8;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
   word-break: break-word;
   line-height: 1.3;
   margin: 0;
+  text-align: center;
 }
 
 .file-meta {
@@ -93,17 +151,19 @@
 .meta-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+  gap: 8px;
+  padding: 6px 16px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
   font-family: 'Degular Regular', sans-serif;
-  font-size: 0.82em;
+  font-size: 0.84em;
   font-weight: 400;
   font-style: normal;
-  color: rgba(239, 238, 232, 0.7);
+  color: rgba(239, 238, 232, 0.8);
   width: fit-content;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .meta-dot {
@@ -130,8 +190,8 @@
 
 /* ── Download Button ── */
 .download-area {
-  margin-top: 20px;
-  padding-top: 20px;
+  margin-top: 28px;
+  padding-top: 0;
   display: flex;
   justify-content: center;
 }
@@ -236,8 +296,13 @@
   }
 
   .card {
-    padding: 24px 20px;
+    padding: 56px 20px 24px;
     gap: 16px;
+  }
+
+  .closeBtn {
+    top: 14px;
+    right: 14px;
   }
 
   .card-body {
@@ -271,8 +336,9 @@
 
 @media (max-width: 400px) {
   .card {
-    padding: 20px 16px;
+    padding: 52px 16px 20px;
   }
+
 
   .card-body {
     flex-direction: column;
