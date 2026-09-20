@@ -18,6 +18,8 @@ from .views import (
     VerificationApproveView,
     VerificationRejectView,
     VerificationDeleteDocumentView,
+    PYQUploadHistoryView,
+    PYQDownloadUrlView,
 )
 
 urlpatterns = [
@@ -43,4 +45,8 @@ urlpatterns = [
     path("admin-api/verifications/<int:pk>/approve/", VerificationApproveView.as_view(), name="admin_verification_approve"),
     path("admin-api/verifications/<int:pk>/reject/", VerificationRejectView.as_view(), name="admin_verification_reject"),
     path("admin-api/verifications/<int:pk>/document/", VerificationDeleteDocumentView.as_view(), name="admin_verification_delete_document"),
+
+    # Admin PYQ upload history endpoints
+    path("admin-api/pyqs/history/", PYQUploadHistoryView.as_view(), name="admin_pyq_upload_history"),
+    path("admin-api/pyqs/<int:pk>/download-url/", PYQDownloadUrlView.as_view(), name="admin_pyq_download_url"),
 ]

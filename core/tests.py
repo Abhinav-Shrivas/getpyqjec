@@ -559,3 +559,162 @@ class HealthCheckTests(TestCase):
         res = client.get("/health/")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json(), {"status": "healthy"})
+
+
+class PYQUploadHistoryTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        # Regular contributor
+        self.contributor = User.objects.create_user(
+            rno="0201IT231001",
+            email="contributor@gmail.com",
+            name="Contributor One",
+            password="password123",
+        )
+
+        # Admin user
+        self.admin = User.objects.create_user(
+            rno="0201IT231002",
+            email="admin@gmail.com",
+            name="Admin User",
+            password="password123",
+            role="admin",
+        )
+
+        # Staff user
+        self.staff = User.objects.create_user(
+            rno="0201IT231003",
+            email="staff@gmail.com",
+            name="Staff User",
+            password="password123",
+            is_staff=True,
+        )
+
+        # Superuser
+        self.superuser = User.objects.create_superuser(
+            rno="0201IT231004",
+            email="superuser@gmail.com",
+            name="Super User",
+            password="password123",
+        )
+
+        # Create sample PYQs
+        self.pyq1 = PYQ.objects.create(
+            branch="IT",
+            semester=6,
+            subject_code="IT61",
+            year=2024,
+            exam_session="December",
+            r2_object_key="pyq/IT/6/IT61/2024_dec.pdf",
+            uploaded_by=self.contributor,
+        )
+        self.pyq2 = PYQ.objects.create(
+            branch="CS",
+            semester=4,
+            subject_code="CS42",
+            year=2023,
+            exam_session="May",
+            r2_object_key="pyq/CS/4/CS42/2023_may.pdf",
+            uploaded_by=self.staff,
+        )
+
+    def test_permissions(self):
+        url = "/admin-api/pyqs/history/"
+
+        # Unauthenticated
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 401)
+
+        # Normal contributor
+        self.client.force_authenticate(user=self.contributor)
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 403)
+
+        # Admin
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+
+        # Staff
+        self.client.force_authenticate(user=self.staff)
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+
+        # Superuser
+        self.client.force_authenticate(user=self.superuser)
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+
+    def test_ordering(self):
+        self.client.force_authenticate(user=self.admin)
+
+        # Default order is recent (-uploaded_at, -id)
+        res = self.client.get("/admin-api/pyqs/history/")
+        self.assertEqual(res.status_code, 200)
+        results = res.data["results"]
+        self.assertEqual(len(results), 2)
+        self.assertEqual(results[0]["id"], self.pyq2.id)
+        self.assertEqual(results[1]["id"], self.pyq1.id)
+
+        # Oldest order
+        res_old = self.client.get("/admin-api/pyqs/history/?order=oldest")
+        self.assertEqual(res_old.status_code, 200)
+        results_old = res_old.data["results"]
+        self.assertEqual(results_old[0]["id"], self.pyq1.id)
+        self.assertEqual(results_old[1]["id"], self.pyq2.id)
+
+    def test_filtering(self):
+        self.client.force_authenticate(user=self.admin)
+
+        # Filter by branch
+        res = self.client.get("/admin-api/pyqs/history/?branch=IT")
+        self.assertEqual(len(res.data["results"]), 1)
+        self.assertEqual(res.data["results"][0]["branch"], "IT")
+
+        # Filter by semester
+        res = self.client.get("/admin-api/pyqs/history/?semester=4")
+        self.assertEqual(len(res.data["results"]), 1)
+        self.assertEqual(res.data["results"][0]["semester"], 4)
+
+        # Filter by year
+        res = self.client.get("/admin-api/pyqs/history/?year=2024")
+        self.assertEqual(len(res.data["results"]), 1)
+        self.assertEqual(res.data["results"][0]["year"], 2024)
+
+        # Filter by subject_code
+        res = self.client.get("/admin-api/pyqs/history/?subject_code=IT61")
+        self.assertEqual(len(res.data["results"]), 1)
+        self.assertEqual(res.data["results"][0]["subject_code"], "IT61")
+
+        # Search by roll number
+        res = self.client.get("/admin-api/pyqs/history/?search=0201IT231001")
+        self.assertEqual(len(res.data["results"]), 1)
+        self.assertEqual(res.data["results"][0]["uploaded_by_rno"], "0201IT231001")
+
+        # Search by subject name
+        res_name = self.client.get("/admin-api/pyqs/history/?search=Elective")
+        self.assertEqual(len(res_name.data["results"]), 1)
+        self.assertEqual(res_name.data["results"][0]["subject_code"], "IT61")
+
+
+    def test_pagination_page_size(self):
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.get("/admin-api/pyqs/history/")
+        self.assertEqual(res.status_code, 200)
+        # Default page size configured in pagination is 15
+        self.assertIn("results", res.data)
+        self.assertIn("count", res.data)
+
+    @patch("core.views.get_pyq_storage")
+    def test_download_url_endpoint(self, mock_get_storage):
+        mock_storage = MagicMock()
+        mock_storage.generate_presigned_download_url.return_value = "https://r2.example.com/presigned-pdf"
+        mock_get_storage.return_value = mock_storage
+
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.get(f"/admin-api/pyqs/{self.pyq1.id}/download-url/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["download_url"], "https://r2.example.com/presigned-pdf")
+        self.assertIn("filename", res.data)
+

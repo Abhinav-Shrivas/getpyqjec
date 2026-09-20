@@ -210,6 +210,43 @@ const fetchExistingPYQs = async (branch, semester, subjectCode = "") => {
   }
 };
 
+const getAdminUploadHistory = async ({
+  order = "recent",
+  branch = "",
+  semester = "",
+  year = "",
+  subject_code = "",
+  search = "",
+  page = 1,
+  page_size = 15,
+} = {}) => {
+  const queryParams = new URLSearchParams();
+  if (order) queryParams.append("order", order);
+  if (branch && branch !== "ALL") queryParams.append("branch", branch);
+  if (semester && semester !== "ALL") queryParams.append("semester", semester);
+  if (year && year !== "ALL") queryParams.append("year", year);
+  if (subject_code && subject_code !== "ALL") queryParams.append("subject_code", subject_code);
+  if (search) queryParams.append("search", search);
+  if (page) queryParams.append("page", page);
+  if (page_size) queryParams.append("page_size", page_size);
+
+  const res = await authFetch(`${API_BASE}/admin-api/pyqs/history/?${queryParams.toString()}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to fetch upload history");
+  }
+  return await res.json();
+};
+
+const getAdminPYQDownloadUrl = async (id) => {
+  const res = await authFetch(`${API_BASE}/admin-api/pyqs/${id}/download-url/`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to generate download URL");
+  }
+  return await res.json();
+};
+
 export {
   fetchUrls,
   uploadData,
@@ -222,5 +259,8 @@ export {
   approveVerification,
   rejectVerification,
   deleteVerificationDocument,
+  getAdminUploadHistory,
+  getAdminPYQDownloadUrl,
 };
+
 

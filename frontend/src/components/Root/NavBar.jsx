@@ -5,8 +5,9 @@ import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 
 export default function NavBar() {
-  const { isLoggedIn, user, logout } = useAuth();
+  const { isLoggedIn, user, logout, isAdmin } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
+
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
@@ -162,12 +163,23 @@ export default function NavBar() {
                   Verification Status
                 </NavLink>
 
+                {isAdmin && (
+                  <NavLink
+                    to="/admin/upload-history"
+                    className={classes["dropdown-item"]}
+                    onClick={() => setShowDropdown(false)}
+                  >
+                    Upload History
+                  </NavLink>
+                )}
+
                 <button
                   onClick={handleLogout}
                   className={classes["dropdown-logout"]}
                 >
                   Logout
                 </button>
+
               </div>
             )}
           </div>

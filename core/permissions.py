@@ -61,9 +61,9 @@ class IsVerifiedStudent(BasePermission):
 
 class IsAdminUser(BasePermission):
     """
-    Allows access only to authenticated users with admin role or is_staff flag.
+    Allows access only to authenticated users with admin role, is_staff flag, or is_superuser.
 
-    Used on admin-api verification management endpoints.
+    Used on admin-api verification management and upload history endpoints.
     """
 
     message = 'Administrator access required.'
@@ -72,4 +72,5 @@ class IsAdminUser(BasePermission):
         user = request.user
         if not user or not user.is_authenticated:
             return False
-        return user.role == 'admin' or user.is_staff
+        return bool(user.role == 'admin' or user.is_staff or getattr(user, 'is_superuser', False))
+

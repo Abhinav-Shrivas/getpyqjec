@@ -317,7 +317,20 @@ def get_expected_subjects(branch: str, semester: int):
     b = (branch or '').strip().upper()
     branch_map = {k.upper(): k for k in SUBJECTS.keys()}
     actual_key = branch_map.get(b)
-    if not actual_key:
-        return []
-
     return SUBJECTS.get(actual_key, {}).get(ord_name, [])
+
+
+SUBJECT_CODE_TO_NAME = {}
+for _branch_data in SUBJECTS.values():
+    for _sem_list in _branch_data.values():
+        for _name, _code in _sem_list:
+            if _code not in SUBJECT_CODE_TO_NAME:
+                SUBJECT_CODE_TO_NAME[_code] = _name
+
+
+def get_subject_name_by_code(code: str, default: str = None) -> str:
+    """Returns the readable subject name for a given subject code."""
+    if not code:
+        return default or ""
+    return SUBJECT_CODE_TO_NAME.get(code.strip(), default if default is not None else code)
+

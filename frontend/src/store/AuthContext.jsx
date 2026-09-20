@@ -91,7 +91,8 @@ export function AuthProvider({ children }) {
   }, [updateVerificationStatus]);
 
   const isVerified = user?.verification_status === "verified";
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || !!user?.is_staff || !!user?.is_superuser;
+
 
   const value = {
     user,

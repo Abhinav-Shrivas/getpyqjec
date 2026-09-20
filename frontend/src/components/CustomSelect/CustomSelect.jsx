@@ -10,27 +10,37 @@ export default function CustomSelect({
   required = false,
   disabled = false,
   id,
+  className = "",
+  triggerClassName = "",
+  dropdownClassName = "",
 }) {
+
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef(null);
   const listRef = useRef(null);
 
-  // Normalize options into { value, label } array
+  // Normalize options into { value, label, triggerLabel } array
   const normalizedOptions = options.map((opt) => {
     if (typeof opt === "object" && opt !== null) {
       if (Array.isArray(opt)) {
         // [label, value] format e.g. from information.js subjects
-        return { label: opt[0], value: opt[1] !== undefined ? String(opt[1]) : String(opt[0]) };
+        return {
+          label: opt[0],
+          triggerLabel: opt[0],
+          value: opt[1] !== undefined ? String(opt[1]) : String(opt[0]),
+        };
       }
       return {
         label: opt.label !== undefined ? opt.label : String(opt.value),
+        triggerLabel: opt.triggerLabel !== undefined ? opt.triggerLabel : (opt.label !== undefined ? opt.label : String(opt.value)),
         value: String(opt.value),
       };
     }
-    return { label: String(opt), value: String(opt) };
+    return { label: String(opt), triggerLabel: String(opt), value: String(opt) };
   });
 
   const selectedOption = normalizedOptions.find((opt) => opt.value === String(value));
+
 
   // Close when clicking outside
   useEffect(() => {
@@ -104,7 +114,7 @@ export default function CustomSelect({
   return (
     <div
       ref={wrapperRef}
-      className={`${styles.wrapper} ${isOpen ? styles.open : ""} ${disabled ? styles.disabled : ""}`}
+      className={`${styles.wrapper} ${isOpen ? styles.open : ""} ${disabled ? styles.disabled : ""} ${className}`}
     >
       {/* Hidden input to guarantee native form submission works */}
       {name && (
@@ -120,15 +130,16 @@ export default function CustomSelect({
       <button
         type="button"
         id={id}
-        className={`${styles.trigger} ${!selectedOption ? styles.placeholder : ""}`}
+        className={`${styles.trigger} ${triggerClassName} ${!selectedOption ? styles.placeholder : ""}`}
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
+
         onKeyDown={handleKeyDown}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
         <span className={styles.selectedLabel}>
-          {selectedOption ? selectedOption.label : placeholder}
+          {selectedOption ? (selectedOption.triggerLabel || selectedOption.label) : placeholder}
         </span>
         <span className={`${styles.arrow} ${isOpen ? styles.arrowUp : ""}`}>
           ▾
@@ -137,7 +148,8 @@ export default function CustomSelect({
 
       {/* Dropdown Menu Popup */}
       {isOpen && !disabled && (
-        <div className={styles.dropdown}>
+        <div className={`${styles.dropdown} ${dropdownClassName}`}>
+
           <div ref={listRef} className={styles.list} role="listbox">
             {normalizedOptions.length === 0 ? (
               <div className={styles.emptyItem}>No options available</div>

@@ -18,7 +18,10 @@ from django.template.exceptions import TemplateDoesNotExist
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
+from django.db.models import Q
+
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,10 +36,11 @@ from utils.r2_storage import (
     get_verification_storage,
 )
 
-from .curriculum import get_expected_subjects
+from .curriculum import get_expected_subjects, SUBJECT_CODE_TO_NAME
 from .models import PYQ, StudentVerification
 from .permissions import IsAdminUser, IsVerifiedStudent
 from .serializers import (
+    PYQUploadHistorySerializer,
     RegisterSerializer,
     VerificationAdminDetailSerializer,
     VerificationAdminListSerializer,
@@ -68,8 +72,11 @@ def _user_response_data(user):
         'email': user.email,
         'name': user.name,
         'role': user.role,
+        'is_staff': bool(user.is_staff),
+        'is_superuser': bool(getattr(user, 'is_superuser', False)),
         'verification_status': _get_verification_status(user),
     }
+
 
 
 def _set_refresh_cookie(response, refresh_token):
@@ -997,3 +1004,106 @@ class ExistingPYQOptionsView(APIView):
 
         existing = list(queryset.values("subject_code", "year", "exam_session"))
         return Response({"existing": existing})
+
+
+class PYQHistoryPagination(PageNumberPagination):
+    """15 items per page for upload history pagination."""
+    page_size = 15
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class PYQUploadHistoryView(APIView):
+    """
+    GET /admin-api/pyqs/history/
+    Lists uploaded PYQs for superusers, administrators, and staff.
+    Default ordering: most recent to oldest (-uploaded_at, -id).
+    Supports sorting ('recent' vs 'oldest') and filtering by branch, semester, year, subject_code, and search.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request):
+        queryset = PYQ.objects.select_related('uploaded_by').all()
+
+        # Filtering
+        branch = request.GET.get('branch', '').strip()
+        if branch and branch.upper() != 'ALL':
+            queryset = queryset.filter(branch__iexact=branch)
+
+        semester = request.GET.get('semester', '').strip()
+        if semester and semester.upper() != 'ALL':
+            try:
+                queryset = queryset.filter(semester=int(semester))
+            except ValueError:
+                pass
+
+        year = request.GET.get('year', '').strip()
+        if year and year.upper() != 'ALL':
+            try:
+                queryset = queryset.filter(year=int(year))
+            except ValueError:
+                pass
+
+        subject_code = request.GET.get('subject_code', '').strip()
+        if subject_code and subject_code.upper() != 'ALL':
+            queryset = queryset.filter(subject_code__iexact=subject_code)
+
+        search = request.GET.get('search', '').strip()
+        if search:
+            search_lower = search.lower()
+            matching_codes = [
+                code for code, name in SUBJECT_CODE_TO_NAME.items()
+                if search_lower in name.lower() or search_lower in code.lower()
+            ]
+            search_query = (
+                Q(uploaded_by__rno__icontains=search) |
+                Q(subject_code__icontains=search)
+            )
+            if matching_codes:
+                search_query |= Q(subject_code__in=matching_codes)
+            queryset = queryset.filter(search_query)
+
+
+        # Sorting: Default is most recent to oldest
+        order = request.GET.get('order', 'recent').strip().lower()
+        if order == 'oldest':
+            queryset = queryset.order_by('uploaded_at', 'id')
+        else:
+            queryset = queryset.order_by('-uploaded_at', '-id')
+
+        # Pagination: 15 per page
+        paginator = PYQHistoryPagination()
+        paginated_queryset = paginator.paginate_queryset(queryset, request)
+        serializer = PYQUploadHistorySerializer(paginated_queryset, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+class PYQDownloadUrlView(APIView):
+    """
+    GET /admin-api/pyqs/<int:pk>/download-url/
+    Generates an on-demand presigned download URL for a single PYQ.
+    Accessible only to superusers, administrators, and staff.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request, pk):
+        try:
+            pyq = PYQ.objects.get(pk=pk)
+        except PYQ.DoesNotExist:
+            return Response({'error': 'PYQ not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not pyq.r2_object_key:
+            return Response({'error': 'No file stored for this PYQ.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            storage = get_pyq_storage()
+            download_url = storage.generate_presigned_download_url(pyq.r2_object_key, expiry=3600)
+            filename = f"{pyq.branch}_sem{pyq.semester}_{pyq.subject_code}_{pyq.year}_{pyq.exam_session}.pdf"
+            return Response({
+                'id': pyq.id,
+                'download_url': download_url,
+                'filename': filename,
+            })
+        except R2StorageError as e:
+            logger.error(f"Failed to generate presigned download URL for PYQ {pyq.id}: {e}")
+            return Response({'error': 'Failed to generate download link.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -1,9 +1,36 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
-from .models import StudentVerification
+from .models import StudentVerification, PYQ
+from .curriculum import get_subject_name_by_code
 
 User = get_user_model()
+
+
+class PYQUploadHistorySerializer(serializers.ModelSerializer):
+    """Admin PYQ upload history serializer returning lean metadata and contributor roll number."""
+
+    uploaded_by_rno = serializers.CharField(source='uploaded_by.rno', read_only=True, default='—')
+    subject_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PYQ
+        fields = (
+            'id',
+            'branch',
+            'semester',
+            'subject_code',
+            'subject_name',
+            'year',
+            'exam_session',
+            'uploaded_at',
+            'uploaded_by_rno',
+        )
+        read_only_fields = fields
+
+    def get_subject_name(self, obj):
+        return get_subject_name_by_code(obj.subject_code, default=obj.subject_code)
+
 
 
 class RegisterSerializer(serializers.ModelSerializer):
