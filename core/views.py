@@ -24,7 +24,12 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from utils.pdf import compile_pdfs_from_buffers
-from utils.r2_storage import R2StorageError, get_pyq_storage, get_verification_storage
+from utils.r2_storage import (
+    R2NoSuchKeyError,
+    R2StorageError,
+    get_pyq_storage,
+    get_verification_storage,
+)
 
 from .models import PYQ, StudentVerification
 from .permissions import IsAdminUser, IsVerifiedStudent
@@ -359,7 +364,7 @@ class DownloadPYQView(APIView):
         if not pyqs:
             return JsonResponse(
                 {
-                    "error": "No PYQ found",
+                    "error": "PYQ missing",
                     "missing_years": sorted(all_years),
                 },
                 status=status.HTTP_404_NOT_FOUND,
@@ -378,25 +383,75 @@ class DownloadPYQView(APIView):
             storage = get_pyq_storage()
 
             def _download(pyq):
-                return storage.download_object(pyq.r2_object_key)
+                try:
+                    buf = storage.download_object(pyq.r2_object_key)
+                    return (pyq, buf, None)
+                except R2NoSuchKeyError as e:
+                    logger.warning(
+                        f"R2 object missing for PYQ id={pyq.id}, key='{pyq.r2_object_key}': {e}"
+                    )
+                    return (pyq, None, "missing")
+                except Exception as e:
+                    err_str = str(e).lower()
+                    if "nosuchkey" in err_str or "not exist" in err_str or "404" in err_str:
+                        logger.warning(
+                            f"R2 object missing for PYQ id={pyq.id}, key='{pyq.r2_object_key}': {e}"
+                        )
+                        return (pyq, None, "missing")
+                    logger.error(
+                        f"Failed to download PYQ id={pyq.id}, key='{pyq.r2_object_key}': {e}",
+                        exc_info=True,
+                    )
+                    return (pyq, None, "error")
 
             max_workers = min(len(pyqs), 5)
             if max_workers > 1:
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    pdf_buffers = list(executor.map(_download, pyqs))
+                    download_results = list(executor.map(_download, pyqs))
             else:
-                pdf_buffers = [_download(pyqs[0])]
+                download_results = [_download(pyqs[0])]
 
-            merged_pdf = compile_pdfs_from_buffers(pdf_buffers)
+            valid_buffers = []
+            successful_pyqs = []
+            for pyq, buf, status_flag in download_results:
+                if buf is not None:
+                    valid_buffers.append(buf)
+                    successful_pyqs.append(pyq)
+
+            # If all requested PYQs were missing in R2 or failed to download
+            if not valid_buffers:
+                logger.warning(
+                    f"No PYQ files could be retrieved from R2 for branch={branch}, "
+                    f"semester={semester}, subject_code={subject_code}, "
+                    f"years={from_year}-{to_year}"
+                )
+                return JsonResponse(
+                    {
+                        "error": "PYQ missing",
+                        "missing_years": sorted(all_years),
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            merged_pdf = compile_pdfs_from_buffers(valid_buffers)
         except Exception as e:
+            err_str = str(e).lower()
+            if "nosuchkey" in err_str or "not exist" in err_str or "404" in err_str:
+                return JsonResponse(
+                    {
+                        "error": "PYQ missing",
+                        "missing_years": sorted(all_years),
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             logger.error(f"Download/Merge failed: {e}", exc_info=True)
             return JsonResponse(
-                {"error": f"Merge failed: {str(e)}"},
+                {"error": "Failed to merge PDF files. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        # Calculate missing years
-        found_years = {p.year for p in pyqs}
+        # Calculate missing years (years not in DB + years missing in R2)
+        found_years = {p.year for p in successful_pyqs}
         missing_years = sorted(all_years - found_years)
 
         filename = f"{branch.upper()}_sem{semester}_{subject_code.upper()}_{from_year}-{to_year}.pdf"

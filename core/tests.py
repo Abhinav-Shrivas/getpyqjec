@@ -17,6 +17,7 @@ from PIL import Image
 
 from core.models import PYQ, StudentVerification
 from utils.pdf import compile_pdfs_from_buffers
+from utils.r2_storage import R2NoSuchKeyError, R2StorageError
 
 User = get_user_model()
 
@@ -291,7 +292,7 @@ class DownloadTests(TestCase):
         res = self.client.get("/download/?branch=CS&semester=3&subject_code=CS31&from_year=2020&to_year=2022")
         self.assertEqual(res.status_code, 404)
         data = res.json()
-        self.assertEqual(data["error"], "No PYQ found")
+        self.assertEqual(data["error"], "PYQ missing")
         self.assertEqual(data["missing_years"], [2020, 2021, 2022])
 
     @patch("core.views.get_pyq_storage")
@@ -306,6 +307,40 @@ class DownloadTests(TestCase):
         self.assertEqual(res["Content-Type"], "application/pdf")
         self.assertIn("IT_sem5_IT51_2022-2024.pdf", res["Content-Disposition"])
         self.assertEqual(res.get("X-missing_years"), "2023")
+
+    @patch("core.views.get_pyq_storage")
+    def test_download_r2_missing_returns_pyq_missing(self, mock_get_storage):
+        mock_storage = MagicMock()
+        mock_storage.download_object.side_effect = R2NoSuchKeyError("Object not found in R2: key")
+        mock_get_storage.return_value = mock_storage
+
+        res = self.client.get("/download/?branch=IT&semester=5&subject_code=IT51&from_year=2022&to_year=2022")
+
+        self.assertEqual(res.status_code, 404)
+        data = res.json()
+        self.assertEqual(data["error"], "PYQ missing")
+        self.assertEqual(data["missing_years"], [2022])
+
+    @patch("core.views.get_pyq_storage")
+    def test_download_partial_r2_missing_merges_available(self, mock_get_storage):
+        mock_storage = MagicMock()
+
+        def mock_download(key):
+            if "2022" in key:
+                raise R2NoSuchKeyError("Missing in R2")
+            return self.pdf_bytes
+
+        mock_storage.download_object.side_effect = mock_download
+        mock_get_storage.return_value = mock_storage
+
+        res = self.client.get("/download/?branch=IT&semester=5&subject_code=IT51&from_year=2022&to_year=2024")
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res["Content-Type"], "application/pdf")
+        # 2022 was missing in R2, 2023 was not in DB -> both should be in X-missing_years
+        missing_years_header = res.get("X-missing_years")
+        self.assertIn("2022", missing_years_header)
+        self.assertIn("2023", missing_years_header)
 
 
 class StudentVerificationTests(TestCase):

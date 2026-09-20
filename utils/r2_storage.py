@@ -25,6 +25,11 @@ class R2StorageError(Exception):
     pass
 
 
+class R2NoSuchKeyError(R2StorageError):
+    """Raised when an object key does not exist in R2 (NoSuchKey or 404)."""
+    pass
+
+
 class R2StorageService:
     """
     Reusable S3-compatible storage client for Cloudflare R2.
@@ -102,7 +107,14 @@ class R2StorageService:
             buffer = BytesIO(response["Body"].read())
             buffer.seek(0)
             return buffer
-        except (BotoCoreError, ClientError) as e:
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code in ("NoSuchKey", "404"):
+                logger.warning(f"R2 object not found for key '{key}': {error_code}")
+                raise R2NoSuchKeyError(f"Object not found in R2: {key}") from e
+            logger.error(f"R2 download failed for key '{key}': {type(e).__name__}")
+            raise R2StorageError(f"Failed to download object: {e}") from e
+        except BotoCoreError as e:
             logger.error(f"R2 download failed for key '{key}': {type(e).__name__}")
             raise R2StorageError(f"Failed to download object: {e}") from e
 
