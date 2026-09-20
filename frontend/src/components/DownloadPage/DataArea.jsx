@@ -78,13 +78,41 @@ export default function DataArea({ url, onClose }) {
           <div className={classes["file-info"]}>
             <h2 className={classes["file-name"]}>{file.name}</h2>
             <div className={classes["file-meta"]}>
-              {/* Missing years warning badge */}
-              {file.missingYears && file.missingYears.length > 0 && (
+              {/* Organized missing subjects per year when "All Subject" is selected */}
+              {file.missingDetails && Object.keys(file.missingDetails).length > 0 ? (
+                <div className={classes["missing-box"]}>
+                  <div className={classes["missing-box-header"]}>
+                    <span className={classes["warning-dot"]}></span>
+                    <span>Missing Question Papers:</span>
+                  </div>
+                  <div className={classes["missing-box-list"]}>
+                    {Object.entries(file.missingDetails).map(([year, subjectsList]) => (
+                      <div key={year} className={classes["missing-row"]}>
+                        <span className={classes["missing-year"]}>{year}</span>
+                        <span className={classes["missing-dash"]}>-</span>
+                        <span className={classes["missing-subjects"]}>
+                          {subjectsList
+                            .map((s) =>
+                              typeof s === "string"
+                                ? s
+                                : s.name && s.code
+                                ? `${s.name} (${s.code})`
+                                : s.name || s.code
+                            )
+                            .join(", ")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : file.missingYears && file.missingYears.length > 0 ? (
+                /* Missing years warning badge when a single subject is selected */
                 <span className={classes["meta-badge"]}>
                   <span className={classes["warning-dot"]}></span>
                   PYQ of {file.missingYears.join(", ")} not available.
                 </span>
-              )}
+              ) : null}
+
               <span className={classes["meta-badge"]}>
                 <span className={classes["meta-dot"]}></span>
                 Ready to download.

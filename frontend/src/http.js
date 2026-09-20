@@ -76,7 +76,17 @@ const fetchUrls = async (queries) => {
     ? missingHeader.split(",").map((y) => y.trim())
     : [];
 
-  return { url, name, missingYears };
+  const missingDetailsHeader = res.headers.get("X-missing_details");
+  let missingDetails = null;
+  if (missingDetailsHeader) {
+    try {
+      missingDetails = JSON.parse(decodeURIComponent(missingDetailsHeader));
+    } catch {
+      missingDetails = null;
+    }
+  }
+
+  return { url, name, missingYears, missingDetails };
 };
 
 const uploadData = async (data) => {

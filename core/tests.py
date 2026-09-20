@@ -342,6 +342,29 @@ class DownloadTests(TestCase):
         self.assertIn("2022", missing_years_header)
         self.assertIn("2023", missing_years_header)
 
+    @patch("core.views.get_pyq_storage")
+    def test_download_all_subjects_returns_missing_details(self, mock_get_storage):
+        import urllib.parse
+        import json
+        mock_storage = MagicMock()
+        mock_storage.download_object.return_value = self.pdf_bytes
+        mock_get_storage.return_value = mock_storage
+
+        res = self.client.get("/download/?branch=IT&semester=5&subject_code=All&from_year=2022&to_year=2024")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("X-missing_details", res)
+        details = json.loads(urllib.parse.unquote(res["X-missing_details"]))
+        # 2022 has IT51, so IT52-IT55 are missing
+        self.assertIn("2022", details)
+        codes_2022 = [s["code"] for s in details["2022"]]
+        self.assertNotIn("IT51", codes_2022)
+        self.assertIn("IT52", codes_2022)
+        # 2023 has no papers, so all 5 subjects are missing
+        self.assertIn("2023", details)
+        codes_2023 = [s["code"] for s in details["2023"]]
+        self.assertEqual(len(codes_2023), 5)
+
+
 
 class StudentVerificationTests(TestCase):
     def setUp(self):

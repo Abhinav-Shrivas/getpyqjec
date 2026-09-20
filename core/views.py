@@ -1,5 +1,7 @@
 import hashlib
+import json
 import logging
+import urllib.parse
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -31,6 +33,7 @@ from utils.r2_storage import (
     get_verification_storage,
 )
 
+from .curriculum import get_expected_subjects
 from .models import PYQ, StudentVerification
 from .permissions import IsAdminUser, IsVerifiedStudent
 from .serializers import (
@@ -360,12 +363,21 @@ class DownloadPYQView(APIView):
         )
 
         all_years = set(range(from_year, to_year + 1))
+        is_all_subjects = subject_code.lower() == "all"
+        expected_subjects = get_expected_subjects(branch, semester) if is_all_subjects else []
 
         if not pyqs:
+            missing_details = {}
+            if is_all_subjects and expected_subjects:
+                for y in range(from_year, to_year + 1):
+                    missing_details[str(y)] = [
+                        {"name": s_name, "code": s_code} for s_name, s_code in expected_subjects
+                    ]
             return JsonResponse(
                 {
                     "error": "PYQ missing",
                     "missing_years": sorted(all_years),
+                    "missing_details": missing_details,
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
@@ -425,10 +437,17 @@ class DownloadPYQView(APIView):
                     f"semester={semester}, subject_code={subject_code}, "
                     f"years={from_year}-{to_year}"
                 )
+                missing_details = {}
+                if is_all_subjects and expected_subjects:
+                    for y in range(from_year, to_year + 1):
+                        missing_details[str(y)] = [
+                            {"name": s_name, "code": s_code} for s_name, s_code in expected_subjects
+                        ]
                 return JsonResponse(
                     {
                         "error": "PYQ missing",
                         "missing_years": sorted(all_years),
+                        "missing_details": missing_details,
                     },
                     status=status.HTTP_404_NOT_FOUND,
                 )
@@ -450,9 +469,22 @@ class DownloadPYQView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        # Calculate missing years (years not in DB + years missing in R2)
+        # Calculate missing years & details (years not in DB + years missing in R2)
         found_years = {p.year for p in successful_pyqs}
-        missing_years = sorted(all_years - found_years)
+        found_pairs = {(p.year, p.subject_code.upper()) for p in successful_pyqs}
+
+        missing_details = {}
+        if is_all_subjects and expected_subjects:
+            for y in range(from_year, to_year + 1):
+                missing_for_year = []
+                for s_name, s_code in expected_subjects:
+                    if (y, s_code.upper()) not in found_pairs:
+                        missing_for_year.append({"name": s_name, "code": s_code})
+                if missing_for_year:
+                    missing_details[str(y)] = missing_for_year
+            missing_years = sorted(all_years - found_years)
+        else:
+            missing_years = sorted(all_years - found_years)
 
         filename = f"{branch.upper()}_sem{semester}_{subject_code.upper()}_{from_year}-{to_year}.pdf"
         response = FileResponse(
@@ -464,6 +496,8 @@ class DownloadPYQView(APIView):
 
         if missing_years:
             response["X-missing_years"] = ",".join(str(y) for y in missing_years)
+        if missing_details:
+            response["X-missing_details"] = urllib.parse.quote(json.dumps(missing_details))
 
         return response
 

@@ -198,7 +198,7 @@ if extra_cors:
     CORS_ALLOWED_ORIGINS.extend([o.strip() for o in extra_cors.split(',') if o.strip()])
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_EXPOSE_HEADERS = ["Content-Disposition", "X-missing_years"]
+CORS_EXPOSE_HEADERS = ["Content-Disposition", "X-missing_years", "X-missing_details"]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
