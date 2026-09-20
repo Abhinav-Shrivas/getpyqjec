@@ -423,9 +423,11 @@ export default function VerificationPage() {
                       <p className={classes.stateText}>
                         Your student account is fully verified! You can upload and manage question papers.
                       </p>
-                      <Link to="/upload" className={classes.primaryBtn}>
-                        Go to Upload PYQ
-                      </Link>
+                      <div className={classes.verifiedActionRow}>
+                        <Link to="/upload" className={classes.primaryBtn}>
+                          Go to Upload PYQ
+                        </Link>
+                      </div>
                     </div>
                   )}
 
