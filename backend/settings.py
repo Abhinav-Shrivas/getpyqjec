@@ -241,5 +241,5 @@ R2_PRESIGNED_URL_EXPIRY = int(os.environ.get('R2_PRESIGNED_URL_EXPIRY', '3600'))
 # ==============================================================================
 # Verification Image Constraints
 # ==============================================================================
-VERIFICATION_MAX_IMAGE_SIZE_MB = int(os.environ.get('VERIFICATION_MAX_IMAGE_SIZE_MB', '5'))
+VERIFICATION_MAX_IMAGE_SIZE_MB = int(os.environ.get('VERIFICATION_MAX_IMAGE_SIZE_MB', '2'))
 VERIFICATION_ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png']

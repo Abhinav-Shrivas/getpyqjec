@@ -408,6 +408,13 @@ class StudentVerificationTests(TestCase):
         self.assertEqual(verification.status, "pending")
         self.assertTrue(verification.r2_object_key.startswith("verification/"))
 
+    def test_submit_verification_exceeds_2mb_rejected(self):
+        oversized_bytes = b"x" * (2 * 1024 * 1024 + 10)
+        image_file = SimpleUploadedFile("big_id.png", oversized_bytes, content_type="image/png")
+        res = self.client.post("/verification/submit/", {"file": image_file})
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("exceeds 2MB limit", res.data["error"])
+
     @patch("core.views.get_verification_storage")
     def test_admin_approval_workflow(self, mock_get_storage):
         verification = StudentVerification.objects.create(

@@ -81,8 +81,8 @@ export default function VerificationPage() {
       setStudentError("Only JPEG and PNG images are allowed.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setStudentError("Image size must be less than 5MB.");
+    if (file.size > 2 * 1024 * 1024) {
+      setStudentError("Image size must be less than 2MB.");
       return;
     }
 
@@ -100,8 +100,8 @@ export default function VerificationPage() {
         setStudentError("Only JPEG and PNG images are allowed.");
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        setStudentError("Image size must be less than 5MB.");
+      if (file.size > 2 * 1024 * 1024) {
+        setStudentError("Image size must be less than 2MB.");
         return;
       }
       setStudentError("");
@@ -325,9 +325,69 @@ export default function VerificationPage() {
               <div className={`${classes.statusCard} ${classes[currentStatus]}`}>
                 <div className={classes.statusHeader}>
                   <span className={classes.statusBadge}>
-                    {currentStatus === "verified" && "✓ Verified Student"}
-                    {currentStatus === "pending" && "⏳ Pending Review"}
-                    {currentStatus === "rejected" && "✕ Verification Rejected"}
+                    {currentStatus === "verified" && (
+                      <span className={classes.badgeWithIcon}>
+                        <span className={classes.verifiedBadge}>
+                          <svg
+                            className={classes.badgeVerifiedIcon}
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </span>
+                        Verified Student
+                      </span>
+                    )}
+                    {currentStatus === "pending" && (
+                      <span className={classes.badgeWithIcon}>
+                        <span className={classes.pendingBadge}>
+                          <svg
+                            className={classes.badgePendingIcon}
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                          </svg>
+                        </span>
+                        Pending Review
+                      </span>
+                    )}
+                    {currentStatus === "rejected" && (
+                      <span className={classes.badgeWithIcon}>
+                        <span className={classes.rejectedBadge}>
+                          <svg
+                            className={classes.badgeRejectedIcon}
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="15" y1="9" x2="9" y2="15" />
+                            <line x1="9" y1="9" x2="15" y2="15" />
+                          </svg>
+                        </span>
+                        Verification Rejected
+                      </span>
+                    )}
                     {currentStatus === "unverified" && (
                       <span className={classes.badgeWithIcon}>
                         <span className={classes.lockBadge}>
@@ -452,7 +512,7 @@ export default function VerificationPage() {
                         <p className={classes.dropText}>
                           Drag & drop your ID card here, or <span className={classes.browseLink}>browse</span>
                         </p>
-                        <span className={classes.fileLimits}>Supported: JPEG, PNG · Maximum 5MB</span>
+                        <span className={classes.fileLimits}>Supported: JPEG, PNG · Maximum 2MB</span>
                       </div>
                     )}
                   </div>

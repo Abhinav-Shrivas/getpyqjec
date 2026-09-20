@@ -268,6 +268,84 @@
   flex-shrink: 0;
 }
 
+.pendingBadge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(245, 158, 11, 0.04) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #f59e0b;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pendingBadge:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 22px rgba(245, 158, 11, 0.32), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.badgePendingIcon {
+  color: #f59e0b;
+  display: block;
+  flex-shrink: 0;
+}
+
+.verifiedBadge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.16) 0%, rgba(52, 211, 153, 0.04) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.38);
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #34d399;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.verifiedBadge:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 22px rgba(52, 211, 153, 0.32), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.badgeVerifiedIcon {
+  color: #34d399;
+  display: block;
+  flex-shrink: 0;
+}
+
+.rejectedBadge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(239, 68, 68, 0.04) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.38);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #f87171;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rejectedBadge:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.32), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.badgeRejectedIcon {
+  color: #f87171;
+  display: block;
+  flex-shrink: 0;
+}
+
 
 
 .statusDate {
