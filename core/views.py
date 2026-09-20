@@ -488,7 +488,7 @@ class RequestPasswordResetView(APIView):
         except User.DoesNotExist:
             logger.warning(f"Password reset requested for unregistered email: {email}")
             return Response(
-                {"message": "If an account exists with this email, a reset link has been sent."},
+                {"message": "If an account exists with this email, a reset link has been sent. The link is valid for 5 minutes only."},
                 status=status.HTTP_200_OK,
             )
 
@@ -505,6 +505,7 @@ class RequestPasswordResetView(APIView):
                     f"Hello {user.name},\n\n"
                     f"We received a request to reset your password for your GetPYQ account.\n\n"
                     f"Click the link below to reset your password:\n{reset_link}\n\n"
+                    f"Note: This link is valid for 5 minutes only.\n\n"
                     f"If you did not request this, you can safely ignore this email.\n\n"
                     f"— GetPYQ JEC Team"
                 ),
@@ -521,7 +522,7 @@ class RequestPasswordResetView(APIView):
             )
 
         return Response(
-            {"message": "If an account exists with this email, a reset link has been sent."},
+            {"message": "If an account exists with this email, a reset link has been sent. The link is valid for 5 minutes only."},
             status=status.HTTP_200_OK,
         )
 

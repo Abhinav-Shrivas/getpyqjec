@@ -137,6 +137,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Password reset token expiry (5 minutes = 300 seconds)
+PASSWORD_RESET_TIMEOUT = 300
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',

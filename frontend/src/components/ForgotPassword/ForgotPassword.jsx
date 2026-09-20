@@ -23,7 +23,7 @@ export default function ForgotPassword() {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(data.message || "If an account exists, a reset link has been sent. Please check your Inbox and Spam folder.");
+        setMessage(data.message || "If an account exists with this email, a reset link has been sent. The link is valid for 5 minutes only.");
       } else {
         setError(data.error || "Failed to send reset link. Please try again.");
       }
