@@ -423,19 +423,20 @@ select option {
   to { opacity: 1; }
 }
 
-/* Uploading progress modal */
+/* Uploading, Success & Error modal overlay */
 .uploadOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(4, 3, 8, 0.75);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1100;
-  padding: 20px;
+  z-index: 1200;
+  padding: 24px;
   animation: overlayFadeIn 0.2s ease-out;
+  overflow-y: auto;
 }
 
 .uploadCard {
@@ -464,6 +465,49 @@ select option {
   align-items: center;
   position: relative;
   z-index: 10;
+  animation: modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modalCloseBtn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(239, 238, 232, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 25;
+}
+
+.modalCloseBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+.modalCloseBtn:active {
+  transform: scale(0.95);
 }
 
 .uploadTitle {
@@ -509,6 +553,129 @@ select option {
   border-radius: 3px;
   box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
   animation: progress 2s infinite ease-in-out;
+}
+
+.successIconWrapper {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.2);
+  animation: successPulse 2s infinite;
+}
+
+@keyframes successPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.25);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(52, 211, 153, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+  }
+}
+
+.errorIconWrapper {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 20px rgba(248, 113, 113, 0.2);
+  animation: errorPulse 2s infinite;
+}
+
+@keyframes errorPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.25);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(248, 113, 113, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0);
+  }
+}
+
+.successDetails {
+  background-color: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-top: 18px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.successMessage {
+  color: #a7f3d0;
+  font-family: 'Degular Regular', sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.errorDetails {
+  background-color: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-top: 18px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.errorMessage {
+  color: #fca5a5;
+  font-family: 'Degular Regular', sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  margin: 0;
+  word-break: break-word;
+}
+
+.modalActionBtn {
+  margin-top: 24px;
+  width: 100%;
+  max-width: 220px;
+  padding: 11px 32px;
+  background: #ffffff;
+  color: #0d0c13;
+  border: none;
+  border-radius: 9999px;
+  font-family: 'Degular Medium', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.modalActionBtn:hover {
+  background: #f1edfa;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+}
+
+.modalActionBtn:active {
+  transform: translateY(-1px);
 }
 
 @keyframes spin {

@@ -9,6 +9,8 @@ import {
 import createPdfFromImages from "../../imgTopdf";
 import CustomSelect from "../CustomSelect/CustomSelect";
 import { fetchExistingPYQs } from "../../http";
+import { useAuth } from "../../store/AuthContext";
+import ErrorPage from "../ErrorPage/Error";
 
 // Generate current year + last 10 years (descending)
 const currentYear = new Date().getFullYear();
@@ -29,13 +31,47 @@ const initialState = {
 };
 
 export default function UploadFormPYQ({ uploadFn }) {
+  const { logout } = useAuth();
   const [selectedValues, setSelectedValues] = useState(initialState);
   const [errorMessage, setErrorMessage] = useState("");
-  const [upload, setUpload] = useState(false);
+  const [modalState, setModalState] = useState(null); // { type: 'uploading' | 'success' | 'error', title, message, isSessionExpired }
   const [dragIndex, setDragIndex] = useState(null);
   const [showOverlay, setShowOverlay] = useState(false);
   const [existingPYQs, setExistingPYQs] = useState([]);
   const fileInputRef = useRef(null);
+  const formRef = useRef(null);
+
+  const upload = modalState?.type === "uploading";
+
+  const handleCloseModal = useCallback(() => {
+    if (modalState?.type === "uploading") return;
+    setModalState(null);
+  }, [modalState]);
+
+  const handleSessionExpired = useCallback(() => {
+    setModalState(null);
+    logout();
+  }, [logout]);
+
+  // Close on Escape key & lock body scrolling while modal is open (except during uploading)
+  useEffect(() => {
+    if (!modalState) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && modalState.type !== "uploading") {
+        handleCloseModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [modalState, handleCloseModal]);
 
   // Fetch existing papers whenever semester and branch change
   const refreshExisting = useCallback(() => {
@@ -278,37 +314,49 @@ export default function UploadFormPYQ({ uploadFn }) {
   async function handleSubmit(event) {
     event.preventDefault();
     if (selectedValues.files.length === 0) {
-      alert("Please select a file to upload.");
+      setModalState({
+        type: "error",
+        title: "No File Selected",
+        message: "Please select a file to upload.",
+      });
       return;
     }
-    setUpload(true);
+    setModalState({ type: "uploading" });
     let finalFile = null;
 
-    if (detectedType === "pdf") {
-      finalFile = selectedValues.files[0]; // single PDF
-    } else if (detectedType === "image") {
-      finalFile = await createPdfFromImages(selectedValues.files); // merged PDF
-    }
-
-    const formData = new FormData();
-    formData.append("branch", selectedValues.branch);
-    formData.append("semester", selectedValues.semester);
-    formData.append("exam_session", selectedValues.session);
-    formData.append("subject_code", selectedValues.subject);
-    formData.append("year", selectedValues.year);
-    formData.append("file", finalFile);
-
     try {
+      if (detectedType === "pdf") {
+        finalFile = selectedValues.files[0]; // single PDF
+      } else if (detectedType === "image") {
+        finalFile = await createPdfFromImages(selectedValues.files); // merged PDF
+      }
+
+      const formData = new FormData();
+      formData.append("branch", selectedValues.branch);
+      formData.append("semester", selectedValues.semester);
+      formData.append("exam_session", selectedValues.session);
+      formData.append("subject_code", selectedValues.subject);
+      formData.append("year", selectedValues.year);
+      formData.append("file", finalFile);
+
       await uploadFn(formData);
       refreshExisting();
       setSelectedValues(initialState);
-      event.target.reset();
-      setUpload(false);
-      alert("File Uploaded Successfully");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (formRef.current) formRef.current.reset();
+      setModalState({
+        type: "success",
+        title: "Upload Successful",
+        message: "File Uploaded Successfully",
+      });
     } catch (error) {
-      setSelectedValues(initialState);
-      event.target.reset();
-      setUpload(false);
+      const isSessionExpired = error.message?.toLowerCase().includes("session expired");
+      setModalState({
+        type: "error",
+        title: isSessionExpired ? "Session Expired" : "Upload Failed",
+        message: error.message || "Failed to upload file. Please try again.",
+        isSessionExpired,
+      });
     }
   }
 
@@ -330,6 +378,7 @@ export default function UploadFormPYQ({ uploadFn }) {
       <div className={styles.container}>
         <form
           id="pyqForm"
+          ref={formRef}
           onSubmit={handleSubmit}
           onReset={handleReset}
           className={styles.form}
@@ -587,21 +636,91 @@ export default function UploadFormPYQ({ uploadFn }) {
         </button>
       </div>
 
-      {/* Uploading progress modal */}
-      {upload && (
-        <div className={styles.uploadOverlay}>
-          <div className={styles.uploadCard}>
-            <div className={styles.spinner} />
-            <h3 className={styles.uploadTitle}>Uploading PYQ...</h3>
-            <p className={styles.uploadSubtitle}>
-              {detectedType === "image" && selectedValues.files.length > 1
-                ? "Converting images to PDF & uploading, please wait"
-                : "Uploading your question paper, please wait"}
-            </p>
-            <div className={styles.progressContainer}>
-              <div className={styles.progressBar} />
+      {/* Uploading, Success, or Error modal */}
+      {modalState && (
+        <div
+          className={styles.uploadOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && modalState.type !== "uploading") {
+              handleCloseModal();
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          {modalState.type === "error" ? (
+            <ErrorPage
+              message={modalState.message}
+              onClose={modalState.isSessionExpired ? handleSessionExpired : handleCloseModal}
+            />
+          ) : (
+            <div className={styles.uploadCard}>
+              {modalState.type !== "uploading" && (
+                <button
+                  type="button"
+                  className={styles.modalCloseBtn}
+                  onClick={handleCloseModal}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              )}
+
+              {/* Uploading state */}
+              {modalState.type === "uploading" && (
+                <>
+                  <div className={styles.spinner} />
+                  <h3 className={styles.uploadTitle}>Uploading PYQ...</h3>
+                  <p className={styles.uploadSubtitle}>
+                    {detectedType === "image" && selectedValues.files.length > 1
+                      ? "Converting images to PDF & uploading, please wait"
+                      : "Uploading your question paper, please wait"}
+                  </p>
+                  <div className={styles.progressContainer}>
+                    <div className={styles.progressBar} />
+                  </div>
+                </>
+              )}
+
+              {/* Success state */}
+              {modalState.type === "success" && (
+                <>
+                  <div className={styles.successIconWrapper}>
+                    <svg
+                      width="32"
+                      height="32"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#34d399"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  </div>
+                  <h3 className={styles.uploadTitle}>
+                    {modalState.title || "Upload Successful"}
+                  </h3>
+                  <p className={styles.uploadSubtitle}>
+                    Your question paper has been uploaded and is now available in GetPYQ.
+                  </p>
+                  <div className={styles.successDetails}>
+                    <p className={styles.successMessage}>
+                      {modalState.message || "File Uploaded Successfully"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.modalActionBtn}
+                    onClick={handleCloseModal}
+                  >
+                    Done
+                  </button>
+                </>
+              )}
             </div>
-          </div>
+          )}
         </div>
       )}
 

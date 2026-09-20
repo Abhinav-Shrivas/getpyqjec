@@ -52,14 +52,6 @@ const ErrorPage = ({ message, status, onClose }) => {
             <strong>Error:</strong> {errorMessage}
           </p>
         </div>
-
-
-        {/* Additional Help Text */}
-        <div className={styles.footer}>
-          <p className={styles.helpText}>
-            If the problem persists, please check your internet connection or contact support.
-          </p>
-        </div>
       </div>
     </div>
   );

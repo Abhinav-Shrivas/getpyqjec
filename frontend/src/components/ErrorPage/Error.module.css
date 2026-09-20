@@ -133,7 +133,7 @@
   border: 1px solid rgba(248, 113, 113, 0.25);
   border-radius: 12px;
   padding: 16px 20px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -142,19 +142,6 @@
   font-family: 'Degular Regular', sans-serif;
   font-size: 15px;
   line-height: 1.4;
-  margin: 0;
-}
-
-.footer {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.helpText {
-  color: rgba(239, 238, 232, 0.7);
-  font-family: 'Degular Regular', sans-serif;
-  font-size: 14px;
   margin: 0;
 }
 

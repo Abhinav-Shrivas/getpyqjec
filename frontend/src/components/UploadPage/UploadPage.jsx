@@ -2,12 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import UploadForm from "./UploadForm";
 import { uploadData } from "../../http";
-import ErrorPage from "../ErrorPage/Error";
 import { useAuth } from "../../store/AuthContext";
 import classes from "./UploadForm.module.css";
 
 export default function UploadDataPage() {
-  const [error, setError] = useState();
   const { logout, user, isVerified, isAdmin, refreshVerificationStatus } = useAuth();
   const [checkingVerification, setCheckingVerification] = useState(false);
 
@@ -18,19 +16,7 @@ export default function UploadDataPage() {
   }, [refreshVerificationStatus]);
 
   async function uploadDataFn(formData) {
-    try {
-      await uploadData(formData);
-      setError(null);
-    } catch (err) {
-      setError(
-        { message: err.message } || { message: "failed to upload data" },
-      );
-      if (err.message.includes("Session expired")) {
-        alert("Session Expired! Please login again.");
-        logout();
-      }
-      throw err;
-    }
+    await uploadData(formData);
   }
 
   const canUpload = isVerified || isAdmin;
@@ -74,23 +60,7 @@ export default function UploadDataPage() {
           </div>
         </div>
       ) : (
-        <>
-          <UploadForm uploadFn={uploadDataFn} />
-          {error && (
-            <div
-              className={classes.uploadOverlay}
-              onClick={(e) => {
-                if (e.target === e.currentTarget) setError(null);
-              }}
-              role="dialog"
-              aria-modal="true"
-            >
-              <div style={{ maxWidth: "520px", width: "100%", margin: "auto" }}>
-                <ErrorPage message={error.message} onClose={() => setError(null)} />
-              </div>
-            </div>
-          )}
-        </>
+        <UploadForm uploadFn={uploadDataFn} />
       )}
     </div>
   );
