@@ -105,13 +105,15 @@ export default function LoginForm() {
             />
           </div>
           {isLogin && (
-            <NavLink
-              to="/forgot-password"
-              className={styles.switchLink}
-              style={{ fontSize: "13px", marginBottom: "8px" }}
-            >
-              Forgot Password?
-            </NavLink>
+            <div className={styles.forgotPasswordWrapper}>
+              <NavLink
+                to="/forgot-password"
+                className={styles.switchLink}
+                style={{ fontSize: "13.5px" }}
+              >
+                Forgot Password?
+              </NavLink>
+            </div>
           )}
           {actionData?.error && (
             <p className={styles.errorText}>{actionData.error}</p>

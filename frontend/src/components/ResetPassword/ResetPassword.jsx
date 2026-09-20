@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, NavLink } from "react-router-dom";
 import { API_BASE } from "../../config";
 import styles from "../LoginForm/LoginForm.module.css";
 
@@ -59,7 +59,7 @@ export default function ResetPassword() {
           </div>
           {error && <p className={styles.errorText}>{error}</p>}
           {message && (
-            <p style={{ color: "#4ade80", textAlign: "center", fontSize: "14px" }}>
+            <p className={styles.successText}>
               {message}
             </p>
           )}
@@ -67,6 +67,11 @@ export default function ResetPassword() {
             <button type="submit" disabled={isSubmitting} className={styles.submitBtn}>
               {isSubmitting ? "Resetting..." : "Reset Password"}
             </button>
+          </div>
+          <div className={styles.footerLink}>
+            <NavLink to="/profile?mode=login" className={styles.switchLink}>
+              Back to Login
+            </NavLink>
           </div>
         </form>
       </div>

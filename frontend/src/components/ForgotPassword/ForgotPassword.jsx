@@ -53,7 +53,7 @@ export default function ForgotPassword() {
           </div>
           {error && <p className={styles.errorText}>{error}</p>}
           {message && (
-            <p style={{ color: "#4ade80", textAlign: "center", fontSize: "14px" }}>
+            <p className={styles.successText}>
               {message}
             </p>
           )}
@@ -62,9 +62,11 @@ export default function ForgotPassword() {
               {isSubmitting ? "Sending..." : "Send Reset Link"}
             </button>
           </div>
-          <NavLink to="/profile?mode=login" className={styles.switchLink}>
-            Back to Login
-          </NavLink>
+          <div className={styles.footerLink}>
+            <NavLink to="/profile?mode=login" className={styles.switchLink}>
+              Back to Login
+            </NavLink>
+          </div>
         </form>
       </div>
     </div>
