@@ -220,6 +220,7 @@ select option {
 /* Firefox */
 .manualYear[type="number"] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 @media (max-width: 520px) {
