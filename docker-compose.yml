@@ -1,0 +1,36 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DEBUG=True
+      - PORT=8000
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount code so edits on host reflect immediately without rebuilding
+      - .:/app
+      - /app/staticfiles
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      # Mount frontend code for instant Vite Hot-Module-Reload (HMR)
+      - ./frontend:/app
+      # Anonymous volume so container's Linux node_modules are not overwritten by host
+      - /app/node_modules
+    depends_on:
+      - backend

@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Production build artifacts
+dist/
+.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Git & OS files
+.git/
+.DS_Store
+Thumbs.db

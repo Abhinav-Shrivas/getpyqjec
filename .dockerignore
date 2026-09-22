@@ -1,0 +1,36 @@
+# Virtual Environments & Python cache
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git repository
+.git/
+.gitignore
+
+# Frontend source (Frontend is built in its own container or via Vercel)
+frontend/
+
+# Local databases, media, and static assets
+db.sqlite3
+*.sqlite3
+staticfiles/
+media/
+data/
+
+# Environment files with secrets
+.env
+.env.*
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
