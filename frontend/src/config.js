@@ -6,6 +6,19 @@
 const envApiBase = import.meta.env.VITE_API_BASE_URL;
 const hostIp = import.meta.env.VITE_HOST_IP;
 
-export const API_BASE = (
-  envApiBase || (hostIp ? `http://${hostIp}:8000` : "http://localhost:8000")
-).replace(/\/+$/, "");
+function getApiBase() {
+  if (envApiBase) {
+    return envApiBase;
+  }
+  if (hostIp) {
+    // If hostIp is already a full URL (e.g. https://getpyqjec.onrender.com)
+    if (hostIp.startsWith("http://") || hostIp.startsWith("https://")) {
+      return hostIp;
+    }
+    // If hostIp is just a LAN IP or hostname (e.g. 192.168.1.5)
+    return `http://${hostIp}:8000`;
+  }
+  return "http://localhost:8000";
+}
+
+export const API_BASE = getApiBase().replace(/\/+$/, "");
