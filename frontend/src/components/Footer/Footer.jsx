@@ -1,10 +1,10 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import classes from "./Footer.module.css";
-import AboutUsModal from "./AboutUsModal";
 
 export default function Footer() {
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+  };
 
   return (
     <>
@@ -13,7 +13,7 @@ export default function Footer() {
           <div className={classes.footerGrid}>
             {/* 1. Left Section: Brand & Community */}
             <div className={classes.brandSection}>
-              <Link to="/" className={classes.logoLink} aria-label="GETPYQ JEC Home">
+              <Link to="/" onClick={handleScrollToTop} className={classes.logoLink} aria-label="GETPYQ JEC Home">
                 <div className={classes.logoGroup}>
                   <div className={classes.logoBadge}>
                     <span>&gt;_</span>
@@ -49,27 +49,22 @@ export default function Footer() {
               <h3 className={classes.columnTitle}>Navigation</h3>
               <ul className={classes.linksList}>
                 <li className={classes.linkItem}>
-                  <button
-                    type="button"
-                    className={classes.footerLink}
-                    onClick={() => setIsAboutOpen(true)}
-                    id="footer-about-btn"
-                  >
+                  <Link to="/about" onClick={handleScrollToTop} className={classes.footerLink} id="footer-about-link">
                     About Us
-                  </button>
+                  </Link>
                 </li>
                 <li className={classes.linkItem}>
-                  <Link to="/" className={classes.footerLink} id="footer-browse-link">
+                  <Link to="/" onClick={handleScrollToTop} className={classes.footerLink} id="footer-browse-link">
                     Browse &amp; Download PYQs
                   </Link>
                 </li>
                 <li className={classes.linkItem}>
-                  <Link to="/upload" className={classes.footerLink} id="footer-upload-link">
+                  <Link to="/upload" onClick={handleScrollToTop} className={classes.footerLink} id="footer-upload-link">
                     Upload Question Paper
                   </Link>
                 </li>
                 <li className={classes.linkItem}>
-                  <Link to="/verify" className={classes.footerLink} id="footer-verify-link">
+                  <Link to="/verify" onClick={handleScrollToTop} className={classes.footerLink} id="footer-verify-link">
                     Student Verification
                   </Link>
                 </li>
@@ -143,9 +138,6 @@ export default function Footer() {
           </div>
         </div>
       </footer>
-
-      {/* About Us Modal */}
-      <AboutUsModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
     </>
   );
 }

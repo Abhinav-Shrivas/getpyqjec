@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import NavBar from "./NavBar.jsx";
 import Background from "../Background/Background.jsx";
@@ -5,6 +6,13 @@ import Footer from "../Footer/Footer.jsx";
 
 export default function RootLayout() {
   const location = useLocation();
+
+  // Automatically scroll to the top of the window on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+  }, [location.pathname]);
 
   // Hide footer on student verification and subject verification pages
   const hiddenRoutes = ["/verify", "/admin/unlisted-subjects"];

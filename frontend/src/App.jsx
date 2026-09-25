@@ -13,6 +13,7 @@ const UploadHistory = lazy(() => import("./components/UploadHistory/UploadHistor
 const UnlistedSubjectApproval = lazy(() => import("./components/UnlistedSubjectApproval/UnlistedSubjectApproval"));
 const ForgotPassword = lazy(() => import("./components/ForgotPassword/ForgotPassword"));
 const ResetPassword = lazy(() => import("./components/ResetPassword/ResetPassword"));
+const AboutPage = lazy(() => import("./components/AboutPage/AboutPage"));
 
 const PageFallback = () => <div style={{ minHeight: "60vh" }}></div>;
 
@@ -22,6 +23,15 @@ const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <DownloadPage />, errorElement: <ErrorPage /> },
+      {
+        path: "about",
+        element: (
+          <Suspense fallback={<PageFallback />}>
+            <AboutPage />
+          </Suspense>
+        ),
+        errorElement: <ErrorPage />,
+      },
       {
         path: "upload",
         element: (
