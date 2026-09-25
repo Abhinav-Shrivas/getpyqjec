@@ -8,7 +8,7 @@ import {
 } from "../../information";
 import createPdfFromImages from "../../imgTopdf";
 import CustomSelect from "../CustomSelect/CustomSelect";
-import { fetchExistingPYQs } from "../../http";
+import { fetchExistingPYQs, fetchSubjects, requestSubjectAddition } from "../../http";
 import { useAuth } from "../../store/AuthContext";
 import ErrorPage from "../ErrorPage/Error";
 
@@ -33,18 +33,24 @@ const initialState = {
 export default function UploadFormPYQ({ uploadFn }) {
   const { logout } = useAuth();
   const [selectedValues, setSelectedValues] = useState(initialState);
+  const [dynamicSubjects, setDynamicSubjects] = useState({ current: [], past: [] });
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [customSubjectCode, setCustomSubjectCode] = useState("");
+  const [customSubjectName, setCustomSubjectName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [modalState, setModalState] = useState(null); // { type: 'uploading' | 'success' | 'error', title, message, isSessionExpired }
+  const [modalState, setModalState] = useState(null); // { type: 'uploading' | 'requesting' | 'success' | 'error', title, message, isSessionExpired }
   const [dragIndex, setDragIndex] = useState(null);
   const [showOverlay, setShowOverlay] = useState(false);
   const [existingPYQs, setExistingPYQs] = useState([]);
   const fileInputRef = useRef(null);
   const formRef = useRef(null);
 
+  const isUnlistedSubject = selectedValues.subject === "__UNLISTED__";
+  const isBusy = modalState?.type === "uploading" || modalState?.type === "requesting";
   const upload = modalState?.type === "uploading";
 
   const handleCloseModal = useCallback(() => {
-    if (modalState?.type === "uploading") return;
+    if (modalState?.type === "uploading" || modalState?.type === "requesting") return;
     setModalState(null);
   }, [modalState]);
 
@@ -53,12 +59,12 @@ export default function UploadFormPYQ({ uploadFn }) {
     logout();
   }, [logout]);
 
-  // Close on Escape key & lock body scrolling while modal is open (except during uploading)
+  // Close on Escape key & lock body scrolling while modal is open (except during busy ops)
   useEffect(() => {
     if (!modalState) return;
 
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && modalState.type !== "uploading") {
+      if (e.key === "Escape" && !isBusy) {
         handleCloseModal();
       }
     };
@@ -214,18 +220,73 @@ export default function UploadFormPYQ({ uploadFn }) {
     setDragIndex(null);
   }
 
-  const subjectsToShow = [];
-  if (selectedValues.semester && selectedValues.branch) {
-    const sem = selectedValues.semester;
-    const branch = selectedValues.branch;
-    const branchSubjects =
-      Number(sem) <= 2
-        ? subjects.CommonForAllBranches?.[ordinals[sem]]
-        : subjects[branch]?.[ordinals[sem]];
-    if (branchSubjects) {
-      subjectsToShow.push(...branchSubjects);
+  // Fetch subjects dynamically from backend
+  useEffect(() => {
+    if (!selectedValues.semester || !selectedValues.branch) {
+      setDynamicSubjects({ current: [], past: [] });
+      return;
     }
-  }
+
+    let isMounted = true;
+    setLoadingSubjects(true);
+
+    fetchSubjects(selectedValues.branch, selectedValues.semester)
+      .then((data) => {
+        if (isMounted) {
+          setDynamicSubjects({
+            current: data.current_subjects || [],
+            past: data.past_subjects || [],
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load dynamic subjects, falling back to static list", err);
+        const sem = selectedValues.semester;
+        const branch = selectedValues.branch;
+        const branchSubjects =
+          Number(sem) <= 2
+            ? subjects.CommonForAllBranches?.[ordinals[sem]]
+            : subjects[branch]?.[ordinals[sem]];
+        if (isMounted && branchSubjects) {
+          setDynamicSubjects({
+            current: branchSubjects.map((s) => ({ code: s[1], name: s[0] })),
+            past: [],
+          });
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingSubjects(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedValues.branch, selectedValues.semester]);
+
+  const subjectsToShow = useMemo(() => {
+    if (!selectedValues.semester || !selectedValues.branch) return [];
+
+    const options = [];
+
+    if (dynamicSubjects.current.length > 0) {
+      options.push({ label: "── Current Curriculum ──", isHeader: true });
+      dynamicSubjects.current.forEach((s) => {
+        options.push({ value: s.code, label: `${s.name} (${s.code})` });
+      });
+    }
+
+    if (dynamicSubjects.past.length > 0) {
+      options.push({ label: "── Past / Previously Taught Subjects ──", isHeader: true });
+      dynamicSubjects.past.forEach((s) => {
+        options.push({ value: s.code, label: `${s.name} (${s.code})` });
+      });
+    }
+
+    options.push({ label: "── Other / Unlisted ──", isHeader: true });
+    options.push({ value: "__UNLISTED__", label: "+ Add Past / Unlisted Subject" });
+
+    return options;
+  }, [selectedValues.semester, selectedValues.branch, dynamicSubjects]);
 
   // Handle file selection — auto-detect type
   const handleFileChange = (e) => {
@@ -313,6 +374,53 @@ export default function UploadFormPYQ({ uploadFn }) {
   // Handle submit
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (isUnlistedSubject) {
+      const code = customSubjectCode.trim().toUpperCase();
+      const name = customSubjectName.trim();
+
+      if (!code || !name) {
+        setModalState({
+          type: "error",
+          title: "Missing Subject Details",
+          message: "Please enter both the subject code and subject name for the unlisted subject.",
+        });
+        return;
+      }
+
+      setModalState({ type: "requesting" });
+      try {
+        const res = await requestSubjectAddition({
+          branch: selectedValues.branch,
+          semester: Number(selectedValues.semester),
+          code,
+          name,
+        });
+
+        setSelectedValues(initialState);
+        setCustomSubjectCode("");
+        setCustomSubjectName("");
+        if (formRef.current) formRef.current.reset();
+
+        setModalState({
+          type: "success",
+          title: "Subject Request Submitted",
+          message:
+            res.message ||
+            `Your request to add "${code} - ${name}" has been submitted for admin approval. Once approved, you'll receive an email notification and it will be available in the dropdown for PYQ upload.`,
+        });
+      } catch (error) {
+        const isSessionExpired = error.message?.toLowerCase().includes("session expired");
+        setModalState({
+          type: "error",
+          title: isSessionExpired ? "Session Expired" : "Request Failed",
+          message: error.message || "Failed to submit subject request. Please try again.",
+          isSessionExpired,
+        });
+      }
+      return;
+    }
+
     if (selectedValues.files.length === 0) {
       setModalState({
         type: "error",
@@ -331,17 +439,26 @@ export default function UploadFormPYQ({ uploadFn }) {
         finalFile = await createPdfFromImages(selectedValues.files); // merged PDF
       }
 
+      const finalCode = selectedValues.subject;
+      const finalName =
+        [...dynamicSubjects.current, ...dynamicSubjects.past].find((s) => s.code === finalCode)?.name || "";
+
       const formData = new FormData();
       formData.append("branch", selectedValues.branch);
       formData.append("semester", selectedValues.semester);
       formData.append("exam_session", selectedValues.session);
-      formData.append("subject_code", selectedValues.subject);
+      formData.append("subject_code", finalCode);
+      if (finalName) {
+        formData.append("subject_name", finalName);
+      }
       formData.append("year", selectedValues.year);
       formData.append("file", finalFile);
 
       await uploadFn(formData);
       refreshExisting();
       setSelectedValues(initialState);
+      setCustomSubjectCode("");
+      setCustomSubjectName("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       if (formRef.current) formRef.current.reset();
       setModalState({
@@ -457,27 +574,91 @@ export default function UploadFormPYQ({ uploadFn }) {
                 id="subject"
                 name="subject"
                 value={selectedValues.subject}
-                placeholder={!selectedValues.branch ? "Select Branch First" : "Select Subject"}
-                options={subjectsToShow.map((subject) => ({
-                  value: subject[1],
-                  label: subject[0],
-                }))}
+                placeholder={
+                  !selectedValues.branch
+                    ? "Select Branch First"
+                    : loadingSubjects
+                    ? "Loading subjects..."
+                    : "Select Subject"
+                }
+                options={subjectsToShow}
                 required
-                disabled={!selectedValues.branch}
-                onChange={(val) =>
+                disabled={!selectedValues.branch || loadingSubjects}
+                onChange={(val) => {
                   setSelectedValues((prev) => ({
                     ...prev,
                     subject: val,
                     year: "",
                     session: "",
-                  }))
-                }
+                  }));
+                  if (val !== "__UNLISTED__") {
+                    setCustomSubjectCode("");
+                    setCustomSubjectName("");
+                  }
+                }}
               />
             </div>
           </div>
 
-          {/* Row 2: Year, Session, Upload Papers */}
-          <div className={styles.formRow}>
+          {/* Unlisted Subject Request Section */}
+          {isUnlistedSubject ? (
+            <div className={styles.unlistedRequestContainer}>
+              <div className={styles.unlistedInfoBanner}>
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+                <div>
+                  <h4 className={styles.unlistedInfoTitle}>Request a Past or Unlisted Subject</h4>
+                  <p className={styles.unlistedInfoText}>
+                    To prevent invalid uploads, unlisted subjects must be verified by administrators.
+                    Once approved, this subject will appear under "Past / Previously Taught Subjects" in the dropdown,
+                    and you will receive an email notification so you can upload the question papers!
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.formRow} style={{ marginTop: "4px" }}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Subject Code *</label>
+                  <input
+                    type="text"
+                    className={styles.manualYear}
+                    placeholder="e.g. CS701M or CS61"
+                    value={customSubjectCode}
+                    onChange={(e) => setCustomSubjectCode(e.target.value.toUpperCase())}
+                    required
+                  />
+                  <span className={styles.fieldHint}>Official university course code</span>
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Subject Name *</label>
+                  <input
+                    type="text"
+                    className={styles.manualYear}
+                    placeholder="e.g. Cryptography & Network Security"
+                    value={customSubjectName}
+                    onChange={(e) => setCustomSubjectName(e.target.value)}
+                    required
+                  />
+                  <span className={styles.fieldHint}>Full course title as on syllabus</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Row 2: Year, Session, Upload Papers */}
+              <div className={styles.formRow}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Year</label>
               <CustomSelect
@@ -620,28 +801,36 @@ export default function UploadFormPYQ({ uploadFn }) {
               Note: If a year or session is not listed, it is already present in the database.
             </span>
           </div>
+            </>
+          )}
         </form>
       </div>
       <div className={styles.buttonGroup}>
         <button
           type="submit"
           form="pyqForm"
-          className={styles.submitBtn}
-          disabled={upload}
+          className={`${styles.submitBtn} ${isUnlistedSubject ? styles.requestBtn : ""}`}
+          disabled={isBusy}
         >
-          {upload ? "Uploading..." : "Submit"}
+          {modalState?.type === "requesting"
+            ? "Submitting Request..."
+            : upload
+            ? "Uploading..."
+            : isUnlistedSubject
+            ? "Submit Subject Request"
+            : "Submit"}
         </button>
-        <button type="reset" form="pyqForm" className={styles.resetBtn} disabled={upload}>
+        <button type="reset" form="pyqForm" className={styles.resetBtn} disabled={isBusy}>
           Reset
         </button>
       </div>
 
-      {/* Uploading, Success, or Error modal */}
+      {/* Uploading, Requesting, Success, or Error modal */}
       {modalState && (
         <div
           className={styles.uploadOverlay}
           onClick={(e) => {
-            if (e.target === e.currentTarget && modalState.type !== "uploading") {
+            if (e.target === e.currentTarget && !isBusy) {
               handleCloseModal();
             }
           }}
@@ -655,7 +844,7 @@ export default function UploadFormPYQ({ uploadFn }) {
             />
           ) : (
             <div className={styles.uploadCard}>
-              {modalState.type !== "uploading" && (
+              {!isBusy && (
                 <button
                   type="button"
                   className={styles.modalCloseBtn}
@@ -682,6 +871,20 @@ export default function UploadFormPYQ({ uploadFn }) {
                 </>
               )}
 
+              {/* Requesting unlisted subject state */}
+              {modalState.type === "requesting" && (
+                <>
+                  <div className={styles.spinner} />
+                  <h3 className={styles.uploadTitle}>Submitting Request...</h3>
+                  <p className={styles.uploadSubtitle}>
+                    Sending subject details to administrators for approval, please wait
+                  </p>
+                  <div className={styles.progressContainer}>
+                    <div className={styles.progressBar} />
+                  </div>
+                </>
+              )}
+
               {/* Success state */}
               {modalState.type === "success" && (
                 <>
@@ -700,14 +903,11 @@ export default function UploadFormPYQ({ uploadFn }) {
                     </svg>
                   </div>
                   <h3 className={styles.uploadTitle}>
-                    {modalState.title || "Upload Successful"}
+                    {modalState.title || "Operation Successful"}
                   </h3>
-                  <p className={styles.uploadSubtitle}>
-                    Your question paper has been uploaded and is now available in GetPYQ.
-                  </p>
                   <div className={styles.successDetails}>
                     <p className={styles.successMessage}>
-                      {modalState.message || "File Uploaded Successfully"}
+                      {modalState.message || "Operation completed successfully."}
                     </p>
                   </div>
                   <button
