@@ -15,7 +15,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import pikepdf
 from PIL import Image
 
-from core.models import PYQ, StudentVerification
+from core.models import PYQ, StudentVerification, Subject, SubjectRequest
 from utils.pdf import compile_pdfs_from_buffers
 from utils.r2_storage import R2NoSuchKeyError, R2StorageError
 
@@ -717,4 +717,222 @@ class PYQUploadHistoryTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["download_url"], "https://r2.example.com/presigned-pdf")
         self.assertIn("filename", res.data)
+
+
+class SubjectAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        Subject.objects.create(branch="IT", semester=7, code="IT71", name="PEC-III", is_current=True)
+        Subject.objects.create(branch="IT", semester=7, code="IT72", name="OEC-II", is_current=True)
+        Subject.objects.create(branch="IT", semester=7, code="IT701M", name="Cloud Computing", is_current=False)
+
+    def test_get_subjects_missing_params(self):
+        res = self.client.get("/subjects/")
+        self.assertEqual(res.status_code, 400)
+
+    def test_get_subjects_invalid_semester(self):
+        res = self.client.get("/subjects/?branch=IT&semester=99")
+        self.assertEqual(res.status_code, 400)
+
+    def test_get_subjects_success(self):
+        res = self.client.get("/subjects/?branch=IT&semester=7")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["branch"], "IT")
+        self.assertEqual(data["semester"], 7)
+        self.assertGreaterEqual(len(data["current_subjects"]), 5)
+        self.assertGreaterEqual(len(data["past_subjects"]), 1)
+        codes = [s["code"] for s in data["past_subjects"]]
+        self.assertIn("IT701M", codes)
+
+
+class SubjectRequestAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            rno="0201IT211001",
+            name="Alice Student",
+            email="alice@jecjabalpur.ac.in",
+            password="StrongPassword123!",
+        )
+        self.admin = User.objects.create_superuser(
+            rno="0201IT211099",
+            name="Admin User",
+            email="admin@jecjabalpur.ac.in",
+            password="StrongPassword123!",
+        )
+        Subject.objects.create(branch="IT", semester=7, code="IT71", name="PEC-III", is_current=True)
+
+    def test_request_subject_unauthenticated(self):
+        res = self.client.post("/subjects/request/", {
+            "branch": "IT",
+            "semester": 7,
+            "code": "IT702M",
+            "name": "Old Cloud Subject",
+        })
+        self.assertEqual(res.status_code, 401)
+
+    def test_request_subject_missing_fields(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.post("/subjects/request/", {
+            "branch": "IT",
+            "semester": 7,
+            "code": "",
+            "name": "",
+        })
+        self.assertEqual(res.status_code, 400)
+
+    def test_request_subject_already_exists(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.post("/subjects/request/", {
+            "branch": "IT",
+            "semester": 7,
+            "code": "IT71",
+            "name": "PEC-III",
+        })
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("already exists", res.data["error"])
+
+    def test_request_subject_success(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.post("/subjects/request/", {
+            "branch": "IT",
+            "semester": 7,
+            "code": "IT702M",
+            "name": "Old Cloud Subject",
+        })
+        self.assertEqual(res.status_code, 201)
+        self.assertTrue(SubjectRequest.objects.filter(code="IT702M", status="pending").exists())
+
+        # Duplicate pending request should fail
+        res_dup = self.client.post("/subjects/request/", {
+            "branch": "IT",
+            "semester": 7,
+            "code": "IT702M",
+            "name": "Old Cloud Subject",
+        })
+        self.assertEqual(res_dup.status_code, 400)
+        self.assertIn("already pending", res_dup.data["error"])
+
+    def test_admin_list_subject_requests(self):
+        req = SubjectRequest.objects.create(
+            user=self.user,
+            branch="IT",
+            semester=7,
+            code="IT703M",
+            name="Network Protocols",
+            status="pending",
+        )
+        # Non-admin forbidden
+        self.client.force_authenticate(user=self.user)
+        res = self.client.get("/admin-api/subject-requests/")
+        self.assertEqual(res.status_code, 403)
+
+        # Admin success
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.get("/admin-api/subject-requests/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["total"], 1)
+        self.assertEqual(res.data["results"][0]["code"], "IT703M")
+
+    def test_admin_approve_subject_request(self):
+        req = SubjectRequest.objects.create(
+            user=self.user,
+            branch="IT",
+            semester=7,
+            code="IT704M",
+            name="Advanced Database",
+            status="pending",
+        )
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.post(f"/admin-api/subject-requests/{req.id}/approve/")
+        self.assertEqual(res.status_code, 200)
+        req.refresh_from_db()
+        self.assertEqual(req.status, "approved")
+        self.assertEqual(req.reviewed_by, self.admin)
+
+        # Subject table should now have IT704M with is_current=False
+        subj = Subject.objects.get(branch="IT", semester=7, code="IT704M")
+        self.assertFalse(subj.is_current)
+        self.assertEqual(subj.name, "Advanced Database")
+
+    def test_admin_reject_subject_request(self):
+        req = SubjectRequest.objects.create(
+            user=self.user,
+            branch="IT",
+            semester=7,
+            code="IT705M",
+            name="Fake Subject",
+            status="pending",
+        )
+        self.client.force_authenticate(user=self.admin)
+        # Missing reason
+        res = self.client.post(f"/admin-api/subject-requests/{req.id}/reject/", {"reason": ""})
+        self.assertEqual(res.status_code, 400)
+
+        # With reason
+        res = self.client.post(f"/admin-api/subject-requests/{req.id}/reject/", {"reason": "Not a real subject"})
+        self.assertEqual(res.status_code, 200)
+        req.refresh_from_db()
+        self.assertEqual(req.status, "rejected")
+        self.assertEqual(req.rejection_reason, "Not a real subject")
+
+
+class VerificationEmailNotificationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            rno="0201IT211050",
+            name="Bob Student",
+            email="bob@jecjabalpur.ac.in",
+            password="StrongPassword123!",
+        )
+        self.admin = User.objects.create_superuser(
+            rno="0201IT211099",
+            name="Admin User",
+            email="admin@jecjabalpur.ac.in",
+            password="StrongPassword123!",
+        )
+        self.verification = StudentVerification.objects.create(
+            user=self.user,
+            status="pending",
+        )
+
+    def test_approve_verification_sends_email(self):
+        self.client.force_authenticate(user=self.admin)
+        mail.outbox = []
+        res = self.client.post(f"/admin-api/verifications/{self.verification.id}/approve/")
+        self.assertEqual(res.status_code, 200)
+        self.verification.refresh_from_db()
+        self.assertEqual(self.verification.status, "verified")
+
+        # Verify email was sent
+        self.assertEqual(len(mail.outbox), 1)
+        sent_mail = mail.outbox[0]
+        self.assertIn("Student ID Verification Approved", sent_mail.subject)
+        self.assertIn(self.user.email, sent_mail.to)
+        self.assertIn(self.user.name, sent_mail.body)
+        self.assertIn("/upload", sent_mail.body)
+
+    def test_reject_verification_sends_email(self):
+        self.client.force_authenticate(user=self.admin)
+        mail.outbox = []
+        res = self.client.post(
+            f"/admin-api/verifications/{self.verification.id}/reject/",
+            {"reason": "ID card photo is blurry. Please upload a clear scan."},
+        )
+        self.assertEqual(res.status_code, 200)
+        self.verification.refresh_from_db()
+        self.assertEqual(self.verification.status, "rejected")
+
+        # Verify email was sent
+        self.assertEqual(len(mail.outbox), 1)
+        sent_mail = mail.outbox[0]
+        self.assertIn("Student ID Verification Update", sent_mail.subject)
+        self.assertIn(self.user.email, sent_mail.to)
+        self.assertIn("ID card photo is blurry", sent_mail.body)
+        self.assertIn("/verify", sent_mail.body)
+
+
+
 

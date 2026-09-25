@@ -10,6 +10,8 @@ from .views import (
     RefreshView,
     LogoutView,
     HealthCheckView,
+    SubjectListView,
+    SubjectRequestCreateView,
     VerificationStatusView,
     VerificationSubmitView,
     VerificationResubmitView,
@@ -20,10 +22,15 @@ from .views import (
     VerificationDeleteDocumentView,
     PYQUploadHistoryView,
     PYQDownloadUrlView,
+    AdminSubjectRequestListView,
+    AdminSubjectRequestApproveView,
+    AdminSubjectRequestRejectView,
 )
 
 urlpatterns = [
     path("health/", HealthCheckView.as_view(), name="health"),
+    path("subjects/", SubjectListView.as_view(), name="subject_list"),
+    path("subjects/request/", SubjectRequestCreateView.as_view(), name="subject_request_create"),
     path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/refresh/", RefreshView.as_view(), name="token_refresh"),
@@ -45,6 +52,11 @@ urlpatterns = [
     path("admin-api/verifications/<int:pk>/approve/", VerificationApproveView.as_view(), name="admin_verification_approve"),
     path("admin-api/verifications/<int:pk>/reject/", VerificationRejectView.as_view(), name="admin_verification_reject"),
     path("admin-api/verifications/<int:pk>/document/", VerificationDeleteDocumentView.as_view(), name="admin_verification_delete_document"),
+
+    # Admin unlisted subject approval endpoints
+    path("admin-api/subject-requests/", AdminSubjectRequestListView.as_view(), name="admin_subject_request_list"),
+    path("admin-api/subject-requests/<int:pk>/approve/", AdminSubjectRequestApproveView.as_view(), name="admin_subject_request_approve"),
+    path("admin-api/subject-requests/<int:pk>/reject/", AdminSubjectRequestRejectView.as_view(), name="admin_subject_request_reject"),
 
     # Admin PYQ upload history endpoints
     path("admin-api/pyqs/history/", PYQUploadHistoryView.as_view(), name="admin_pyq_upload_history"),

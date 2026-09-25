@@ -56,8 +56,73 @@ class User(AbstractBaseUser, PermissionsMixin):
             return 'unverified'
 
 
-#PYQ Model
+# ── Subject Model ────────────────────────────────────────────────────────────
+class Subject(models.Model):
+    branch = models.CharField(max_length=30)
+    semester = models.IntegerField()
+    code = models.CharField(max_length=30)
+    name = models.CharField(max_length=200)
+    is_current = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Subject"
+        verbose_name_plural = "Subjects"
+        unique_together = ('branch', 'semester', 'code', 'name')
+        ordering = ['branch', 'semester', '-is_current', 'code']
+        indexes = [
+            models.Index(fields=['branch', 'semester', 'is_current'], name='subj_branch_sem_idx'),
+            models.Index(fields=['code'], name='subj_code_idx'),
+        ]
+
+    def __str__(self):
+        status = "Current" if self.is_current else "Past"
+        return f"{self.branch} Sem {self.semester}: {self.code} - {self.name} ({status})"
+
+
+# ── Subject Request Model ────────────────────────────────────────────────────
+class SubjectRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subject_requests')
+    branch = models.CharField(max_length=30)
+    semester = models.IntegerField()
+    code = models.CharField(max_length=30)
+    name = models.CharField(max_length=200)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='subject_requests_reviewed',
+    )
+    rejection_reason = models.TextField(blank=True, default='')
+
+    class Meta:
+        verbose_name = 'Subject Request'
+        verbose_name_plural = 'Subject Requests'
+        ordering = ['-submitted_at']
+        indexes = [
+            models.Index(fields=['status'], name='subj_req_status_idx'),
+            models.Index(fields=['branch', 'semester'], name='subj_req_branch_sem_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.code} - {self.name} ({self.branch} Sem {self.semester}) [{self.status}]"
+
+
+# PYQ Model
 class PYQ(models.Model):
+    subject = models.ForeignKey(
+        Subject, on_delete=models.SET_NULL, null=True, blank=True, related_name='pyqs'
+    )
     branch = models.CharField(max_length=10)
     semester = models.IntegerField()
     subject_code = models.CharField(max_length=20)

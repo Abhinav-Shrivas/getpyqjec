@@ -36,12 +36,13 @@ from utils.r2_storage import (
     get_verification_storage,
 )
 
-from .curriculum import get_expected_subjects, SUBJECT_CODE_TO_NAME
-from .models import PYQ, StudentVerification
+from .curriculum import get_expected_subjects, SUBJECT_CODE_TO_NAME, get_subject_name_by_code
+from .models import PYQ, StudentVerification, Subject, SubjectRequest
 from .permissions import IsAdminUser, IsVerifiedStudent
 from .serializers import (
     PYQUploadHistorySerializer,
     RegisterSerializer,
+    SubjectRequestSerializer,
     VerificationAdminDetailSerializer,
     VerificationAdminListSerializer,
     VerificationStatusSerializer,
@@ -123,6 +124,164 @@ class HealthCheckView(APIView):
 
     def get(self, request):
         return JsonResponse({"status": "healthy"})
+
+
+# ─── Subjects API ─────────────────────────────────────────────────────────────
+
+class SubjectListView(APIView):
+    """
+    GET /subjects/?branch=IT&semester=7
+    Returns active (current) and past subjects for the given branch and semester.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        branch = request.GET.get("branch", "").strip().upper()
+        semester = request.GET.get("semester", "").strip()
+
+        if not branch or not semester:
+            return Response(
+                {"error": "Both 'branch' and 'semester' query parameters are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            semester = int(semester)
+            if not (1 <= semester <= 8):
+                raise ValueError()
+        except ValueError:
+            return Response(
+                {"error": "Semester must be an integer between 1 and 8."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        branch_aliases = [branch]
+        if branch == "CS":
+            branch_aliases.append("CSE")
+        elif branch == "CSE":
+            branch_aliases.append("CS")
+
+        if semester <= 2:
+            branch_aliases.extend(["CommonForAllBranches", "COMMONFORALLBRANCHES"])
+
+        current_qs = Subject.objects.filter(
+            branch__in=branch_aliases,
+            semester=semester,
+            is_current=True,
+        ).order_by("code")
+
+        past_qs = Subject.objects.filter(
+            branch__in=branch_aliases,
+            semester=semester,
+            is_current=False,
+        ).order_by("code")
+
+        current_subjects = [
+            {"code": s.code, "name": s.name, "is_current": True}
+            for s in current_qs
+        ]
+        past_subjects = [
+            {"code": s.code, "name": s.name, "is_current": False}
+            for s in past_qs
+        ]
+
+        # Also include any distinct subject codes from uploaded PYQs if not already present
+        existing_codes = {s["code"] for s in current_subjects} | {s["code"] for s in past_subjects}
+        extra_pyq_codes = (
+            PYQ.objects.filter(branch__in=branch_aliases, semester=semester)
+            .exclude(subject_code__in=existing_codes)
+            .values_list("subject_code", flat=True)
+            .distinct()
+        )
+        for code in extra_pyq_codes:
+            clean_code = code.strip().upper()
+            if clean_code not in existing_codes:
+                existing_codes.add(clean_code)
+                name = get_subject_name_by_code(clean_code, clean_code)
+                past_subjects.append({"code": clean_code, "name": name, "is_current": False})
+
+        return Response({
+            "branch": branch,
+            "semester": semester,
+            "current_subjects": current_subjects,
+            "past_subjects": past_subjects,
+        })
+
+
+class SubjectRequestCreateView(APIView):
+    """
+    POST /subjects/request/
+    Allows authenticated students to submit a request for an unlisted or past subject.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        branch = request.data.get("branch", "").strip()
+        semester = request.data.get("semester")
+        code = request.data.get("code", "").strip().upper()
+        name = request.data.get("name", "").strip()
+
+        if not branch or not semester or not code or not name:
+            return Response(
+                {"error": "Branch, semester, subject code, and subject name are all required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            semester = int(semester)
+            if not (1 <= semester <= 8):
+                raise ValueError()
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Semester must be an integer between 1 and 8."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        branch_aliases = [branch]
+        if branch == "CS":
+            branch_aliases.append("CSE")
+        elif branch == "CSE":
+            branch_aliases.append("CS")
+
+        if semester <= 2:
+            branch_aliases.extend(["CommonForAllBranches", "COMMONFORALLBRANCHES"])
+
+        # Check if already present in Subject database
+        if Subject.objects.filter(branch__in=branch_aliases, semester=semester, code__iexact=code).exists():
+            return Response(
+                {"error": f"Subject with code '{code}' already exists in the curriculum for {branch} Semester {semester}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if already pending review
+        if SubjectRequest.objects.filter(
+            branch__in=branch_aliases,
+            semester=semester,
+            code__iexact=code,
+            status="pending",
+        ).exists():
+            return Response(
+                {"error": f"A request for subject code '{code}' in {branch} Semester {semester} is already pending admin review."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        subject_req = SubjectRequest.objects.create(
+            user=request.user,
+            branch=branch,
+            semester=semester,
+            code=code,
+            name=name,
+            status="pending",
+        )
+
+        serializer = SubjectRequestSerializer(subject_req)
+        return Response(
+            {
+                "message": f"Request to add '{code} - {name}' submitted successfully. It will be reviewed by an administrator.",
+                "request": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 # ─── Authentication ───────────────────────────────────────────────────────────
@@ -283,9 +442,35 @@ class UploadPYQView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+        # Resolve or auto-register Subject
+        branch_aliases = [branch]
+        if branch == "CS":
+            branch_aliases.append("CSE")
+        elif branch == "CSE":
+            branch_aliases.append("CS")
+        if semester <= 2:
+            branch_aliases.extend(["CommonForAllBranches", "COMMONFORALLBRANCHES"])
+
+        subj = Subject.objects.filter(
+            branch__in=branch_aliases,
+            semester=semester,
+            code=subject_code,
+        ).first()
+
+        if not subj:
+            custom_name = request.POST.get("subject_name", "").strip() or get_subject_name_by_code(subject_code, subject_code)
+            subj, _ = Subject.objects.get_or_create(
+                branch=branch,
+                semester=semester,
+                code=subject_code,
+                name=custom_name,
+                defaults={"is_current": False},
+            )
+
         # Save metadata to database with cleanup on failure
         try:
             pyq = PYQ.objects.create(
+                subject=subj,
                 branch=branch,
                 semester=semester,
                 subject_code=subject_code,
@@ -881,6 +1066,30 @@ class VerificationApproveView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # Notify student via email
+        frontend_base = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
+        try:
+            send_mail(
+                subject="Student ID Verification Approved | GetPYQ JEC",
+                message=(
+                    f"Hello {verification.user.name},\n\n"
+                    f"Congratulations! Your student ID verification (Roll No: {verification.user.rno}) "
+                    f"has been approved by the admin team.\n\n"
+                    f"Your account is now verified. You have full access to contribute and upload "
+                    f"previous-year question papers (PYQs) to GetPYQ JEC.\n\n"
+                    f"Start uploading here:\n"
+                    f"{frontend_base}/upload\n\n"
+                    f"Thank you for helping the student community!\n\n"
+                    f"— GetPYQ JEC Team"
+                ),
+                from_email=None,
+                recipient_list=[verification.user.email],
+                fail_silently=True,
+            )
+            logger.info(f"Verification approval email sent to {verification.user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send verification approval email to {verification.user.email}: {e}")
+
         return Response({
             'message': f'Verification approved for {verification.user.rno}.',
             'status': 'verified',
@@ -925,6 +1134,29 @@ class VerificationRejectView(APIView):
                 {'error': 'Verification not found.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        # Notify student via email
+        frontend_base = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
+        try:
+            send_mail(
+                subject="Student ID Verification Update | GetPYQ JEC",
+                message=(
+                    f"Hello {verification.user.name},\n\n"
+                    f"Your student ID verification submission (Roll No: {verification.user.rno}) "
+                    f"was reviewed by the admin team and could not be approved.\n\n"
+                    f"Reason for rejection:\n"
+                    f"{reason}\n\n"
+                    f"You can review your status and resubmit a clearer photo of your college ID card here:\n"
+                    f"{frontend_base}/verify\n\n"
+                    f"— GetPYQ JEC Team"
+                ),
+                from_email=None,
+                recipient_list=[verification.user.email],
+                fail_silently=True,
+            )
+            logger.info(f"Verification rejection email sent to {verification.user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send verification rejection email to {verification.user.email}: {e}")
 
         return Response({
             'message': f'Verification rejected for {verification.user.rno}.',
@@ -1106,4 +1338,213 @@ class PYQDownloadUrlView(APIView):
             })
         except R2StorageError as e:
             logger.error(f"Failed to generate presigned download URL for PYQ {pyq.id}: {e}")
-            return Response({'error': 'Failed to generate download link.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': 'Failed to generate download link.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ─── Admin Unlisted Subject Management ────────────────────────────────────────
+
+class AdminSubjectRequestListView(APIView):
+    """
+    GET /admin-api/subject-requests/
+    List and filter subject addition requests. Admin only.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request):
+        queryset = SubjectRequest.objects.select_related("user", "reviewed_by").all()
+
+        status_filter = request.GET.get("status", "").strip().lower()
+        if status_filter and status_filter != "all":
+            queryset = queryset.filter(status=status_filter)
+
+        branch_filter = request.GET.get("branch", "").strip()
+        if branch_filter and branch_filter.upper() != "ALL":
+            queryset = queryset.filter(branch__iexact=branch_filter)
+
+        semester_filter = request.GET.get("semester", "").strip()
+        if semester_filter and semester_filter.upper() != "ALL":
+            try:
+                queryset = queryset.filter(semester=int(semester_filter))
+            except ValueError:
+                pass
+
+        search = request.GET.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(user__rno__icontains=search)
+                | Q(user__name__icontains=search)
+                | Q(user__email__icontains=search)
+                | Q(code__icontains=search)
+                | Q(name__icontains=search)
+            )
+
+        queryset = queryset.order_by("-submitted_at")
+
+        try:
+            page = max(1, int(request.GET.get("page", 1)))
+        except ValueError:
+            page = 1
+        try:
+            page_size = max(1, min(100, int(request.GET.get("page_size", 15))))
+        except ValueError:
+            page_size = 15
+
+        total = queryset.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+
+        requests_page = queryset[start:end]
+        serializer = SubjectRequestSerializer(requests_page, many=True)
+
+        return Response({
+            "results": serializer.data,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size if total > 0 else 1,
+        })
+
+
+class AdminSubjectRequestApproveView(APIView):
+    """
+    POST /admin-api/subject-requests/<int:pk>/approve/
+    Approves a subject addition request, creates/activates the Subject, and emails the requesting student.
+    Admin only.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request, pk):
+        try:
+            with transaction.atomic():
+                subject_req = (
+                    SubjectRequest.objects
+                    .select_for_update()
+                    .select_related("user")
+                    .get(pk=pk)
+                )
+
+                if subject_req.status != "pending":
+                    return Response(
+                        {"error": f"Cannot approve a request with status: {subject_req.status}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                subject_req.status = "approved"
+                subject_req.reviewed_at = datetime.now(timezone.utc)
+                subject_req.reviewed_by = request.user
+                subject_req.rejection_reason = ""
+                subject_req.save()
+
+                # Add to Subject table as an approved past/unlisted subject (is_current=False)
+                subject, created = Subject.objects.get_or_create(
+                    branch=subject_req.branch,
+                    semester=subject_req.semester,
+                    code=subject_req.code,
+                    defaults={
+                        "name": subject_req.name,
+                        "is_current": False,
+                    },
+                )
+                if not created and not subject.name:
+                    subject.name = subject_req.name
+                    subject.save(update_fields=["name"])
+
+        except SubjectRequest.DoesNotExist:
+            return Response(
+                {"error": "Subject request not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Notify the student via email
+        try:
+            send_mail(
+                subject=f"Subject Approved: {subject_req.code} - {subject_req.name} | GetPYQ JEC",
+                message=(
+                    f"Hello {subject_req.user.name},\n\n"
+                    f"Good news! Your request to add the subject '{subject_req.code} - {subject_req.name}' "
+                    f"for {subject_req.branch}, Semester {subject_req.semester} has been approved by the admin team.\n\n"
+                    f"This subject is now available under 'Past / Previously Taught Subjects' in the subject dropdown. "
+                    f"You can now upload question papers for this subject on GetPYQ JEC.\n\n"
+                    f"Thank you for helping keep GetPYQ comprehensive!\n\n"
+                    f"— GetPYQ JEC Team"
+                ),
+                from_email=None,
+                recipient_list=[subject_req.user.email],
+                fail_silently=True,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send subject approval email to {subject_req.user.email}: {e}")
+
+        return Response({
+            "message": f"Subject '{subject_req.code} - {subject_req.name}' approved and added to curriculum.",
+            "status": "approved",
+        })
+
+
+class AdminSubjectRequestRejectView(APIView):
+    """
+    POST /admin-api/subject-requests/<int:pk>/reject/
+    Rejects a subject addition request with a reason and notifies the requesting student via email.
+    Admin only.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request, pk):
+        reason = request.data.get("reason", "").strip()
+        if not reason:
+            return Response(
+                {"error": "Rejection reason is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            with transaction.atomic():
+                subject_req = (
+                    SubjectRequest.objects
+                    .select_for_update()
+                    .select_related("user")
+                    .get(pk=pk)
+                )
+
+                if subject_req.status != "pending":
+                    return Response(
+                        {"error": f"Cannot reject a request with status: {subject_req.status}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                subject_req.status = "rejected"
+                subject_req.reviewed_at = datetime.now(timezone.utc)
+                subject_req.reviewed_by = request.user
+                subject_req.rejection_reason = reason
+                subject_req.save()
+
+        except SubjectRequest.DoesNotExist:
+            return Response(
+                {"error": "Subject request not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Notify the student via email
+        try:
+            send_mail(
+                subject=f"Subject Request Update: {subject_req.code} | GetPYQ JEC",
+                message=(
+                    f"Hello {subject_req.user.name},\n\n"
+                    f"Your request to add the subject '{subject_req.code} - {subject_req.name}' "
+                    f"for {subject_req.branch}, Semester {subject_req.semester} was reviewed and not approved.\n\n"
+                    f"Reason for rejection:\n{reason}\n\n"
+                    f"If you have additional details or syllabus proof, please feel free to submit a revised request.\n\n"
+                    f"— GetPYQ JEC Team"
+                ),
+                from_email=None,
+                recipient_list=[subject_req.user.email],
+                fail_silently=True,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send subject rejection email to {subject_req.user.email}: {e}")
+
+        return Response({
+            "message": f"Subject request for '{subject_req.code}' was rejected.",
+            "status": "rejected",
+            "reason": reason,
+        })

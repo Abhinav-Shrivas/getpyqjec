@@ -247,10 +247,92 @@ const getAdminPYQDownloadUrl = async (id) => {
   return await res.json();
 };
 
+const fetchSubjects = async (branch, semester) => {
+  const res = await fetch(
+    `${API_BASE}/subjects/?branch=${encodeURIComponent(branch)}&semester=${encodeURIComponent(semester)}`
+  );
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to fetch subjects");
+  }
+  return await res.json();
+};
+
+const requestSubjectAddition = async ({ branch, semester, code, name }) => {
+  const res = await authFetch(`${API_BASE}/subjects/request/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ branch, semester, code, name }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to submit subject request");
+  }
+  return await res.json();
+};
+
+const getAdminSubjectRequests = async ({
+  status = "pending",
+  branch = "",
+  semester = "",
+  search = "",
+  page = 1,
+  page_size = 15,
+} = {}) => {
+  const queryParams = new URLSearchParams();
+  if (status && status !== "all") queryParams.append("status", status);
+  if (branch && branch !== "ALL") queryParams.append("branch", branch);
+  if (semester && semester !== "ALL") queryParams.append("semester", semester);
+  if (search) queryParams.append("search", search);
+  if (page) queryParams.append("page", page);
+  if (page_size) queryParams.append("page_size", page_size);
+
+  const res = await authFetch(`${API_BASE}/admin-api/subject-requests/?${queryParams.toString()}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to fetch subject requests");
+  }
+  return await res.json();
+};
+
+const approveSubjectRequest = async (id) => {
+  const res = await authFetch(`${API_BASE}/admin-api/subject-requests/${id}/approve/`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to approve subject request");
+  }
+  return await res.json();
+};
+
+const rejectSubjectRequest = async (id, reason) => {
+  const res = await authFetch(`${API_BASE}/admin-api/subject-requests/${id}/reject/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to reject subject request");
+  }
+  return await res.json();
+};
+
 export {
   fetchUrls,
   uploadData,
   fetchExistingPYQs,
+  fetchSubjects,
+  requestSubjectAddition,
+  getAdminSubjectRequests,
+  approveSubjectRequest,
+  rejectSubjectRequest,
   getVerificationStatus,
   submitVerification,
   resubmitVerification,
@@ -262,5 +344,6 @@ export {
   getAdminUploadHistory,
   getAdminPYQDownloadUrl,
 };
+
 
 
