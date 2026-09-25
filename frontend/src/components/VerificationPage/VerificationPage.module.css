@@ -640,109 +640,25 @@
 .filterGroup {
   display: flex;
   align-items: center;
+  min-width: 195px;
+  flex: 0 0 195px;
 }
 
-.selectWrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(14, 12, 22, 0.7);
-  border: 1px solid rgba(180, 160, 220, 0.22);
-  color: #EFEEE8;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-family: 'Degular Regular', sans-serif;
-  font-size: 0.92rem;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-  transition: all 0.2s ease;
-  cursor: pointer;
-  user-select: none;
-}
-
-.selectWrapper:hover {
-  background-color: rgba(22, 18, 34, 0.92);
-  border-color: rgba(168, 85, 247, 0.55);
-}
-
-.selectWrapper:focus-within {
-  background-color: rgba(24, 18, 38, 0.98);
-  border-color: rgba(168, 85, 247, 0.75);
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
-}
-
-.selectLabel {
-  white-space: nowrap;
-  pointer-events: none;
-  color: #EFEEE8;
-  font-family: 'Degular Regular', sans-serif;
-  font-size: 0.92rem;
-  line-height: 1.2;
-}
-
-.selectArrow {
-  flex-shrink: 0;
-  pointer-events: none;
-  stroke: #EFEEE8;
-  display: inline-block;
-  vertical-align: middle;
-  transition: transform 0.2s ease;
-}
-
-.nativeSelect {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  border: none;
-  background: transparent;
-  font-size: 0.92rem;
-  margin: 0;
-  padding: 0;
-}
-
-.select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background: rgba(14, 12, 22, 0.7);
-  border: 1px solid rgba(180, 160, 220, 0.22);
-  color: #EFEEE8;
-  padding: 8px 22px 8px 12px;
-  border-radius: 8px;
-  font-family: 'Degular Regular', sans-serif;
-  font-size: 0.92rem;
-  outline: none;
-  cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23EFEEE8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-  transition: all 0.2s ease;
-  width: auto;
-}
-
-.select:hover {
-  background-color: rgba(22, 18, 34, 0.92);
-  border-color: rgba(168, 85, 247, 0.55);
-}
-
-.select:focus {
-  background-color: rgba(24, 18, 38, 0.98);
-  border-color: rgba(168, 85, 247, 0.75);
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
+.statusFilterTrigger {
+  padding: 8.5px 14px !important;
+  font-size: 0.92rem !important;
+  min-height: 39px !important;
+  border-radius: 8px !important;
+  box-sizing: border-box;
 }
 
 .searchInput {
   background: rgba(14, 12, 22, 0.7);
   border: 1px solid rgba(180, 160, 220, 0.22);
   color: #EFEEE8;
-  padding: 8px 14px;
+  padding: 8.5px 14px;
+  min-height: 39px;
+  box-sizing: border-box;
   border-radius: 8px;
   font-family: 'Degular Regular', sans-serif;
   font-size: 0.92rem;
@@ -1229,6 +1145,12 @@
 
   .adminToolbar {
     flex-direction: column;
+  }
+
+  .filterGroup {
+    width: 100%;
+    min-width: 100%;
+    flex: 1 1 100%;
   }
 
   .searchInput {

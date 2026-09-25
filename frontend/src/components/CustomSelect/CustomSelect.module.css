@@ -38,6 +38,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .arrow {
@@ -78,9 +82,10 @@
 .dropdown {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  background: rgba(18, 16, 28, 0.88);
+  min-width: 100%;
+  width: max-content;
+  max-width: min(540px, calc(100vw - 32px));
+  background: rgba(18, 16, 28, 0.94);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(180, 160, 220, 0.22);
@@ -90,7 +95,28 @@
   padding: 6px;
   z-index: 1000;
   animation: dropdownAnim 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: top center;
+  box-sizing: border-box;
+}
+
+.alignLeft {
+  left: 0;
+  right: auto;
+  transform-origin: top left;
+}
+
+.alignRight {
+  right: 0;
+  left: auto;
+  transform-origin: top right;
+}
+
+@media (max-width: 520px) {
+  .dropdown {
+    width: 100%;
+    left: 0;
+    right: 0;
+    max-width: 100%;
+  }
 }
 
 @keyframes dropdownAnim {
@@ -107,6 +133,7 @@
 .list {
   max-height: 280px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -140,15 +167,30 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   transition: all 0.15s ease;
   user-select: none;
+  white-space: nowrap;
 }
 
 .itemLabel {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   white-space: nowrap;
+  flex: 1;
+}
+
+.labelText {
+  white-space: nowrap;
+}
+
+.optionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .item:hover {
@@ -188,6 +230,7 @@
   margin-top: 4px;
   user-select: none;
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .headerItem:first-child {

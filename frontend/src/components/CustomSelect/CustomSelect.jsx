@@ -13,13 +13,35 @@ export default function CustomSelect({
   className = "",
   triggerClassName = "",
   dropdownClassName = "",
+  align = "auto",
 }) {
 
   const [isOpen, setIsOpen] = useState(false);
+  const [computedAlign, setComputedAlign] = useState(align === "right" ? "right" : "left");
   const wrapperRef = useRef(null);
   const listRef = useRef(null);
 
-  // Normalize options into { value, label, triggerLabel } array
+  // Compute dropdown alignment based on prop or viewport position
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (align === "left" || align === "right") {
+      setComputedAlign(align);
+      return;
+    }
+
+    if (wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+      if (rect.right > windowWidth * 0.55 || rect.left + 360 > windowWidth - 20) {
+        setComputedAlign("right");
+      } else {
+        setComputedAlign("left");
+      }
+    }
+  }, [isOpen, align]);
+
+  // Normalize options into { value, label, triggerLabel, icon, isHeader } array
   const normalizedOptions = options.map((opt) => {
     if (typeof opt === "object" && opt !== null) {
       if (Array.isArray(opt)) {
@@ -28,6 +50,8 @@ export default function CustomSelect({
           label: opt[0],
           triggerLabel: opt[0],
           value: opt[1] !== undefined ? String(opt[1]) : String(opt[0]),
+          icon: null,
+          isHeader: false,
         };
       }
       return {
@@ -35,9 +59,11 @@ export default function CustomSelect({
         triggerLabel: opt.triggerLabel !== undefined ? opt.triggerLabel : (opt.label !== undefined ? opt.label : String(opt.value)),
         value: opt.value !== undefined ? String(opt.value) : "",
         isHeader: !!opt.isHeader || !!opt.disabled,
+        icon: opt.icon || null,
+        className: opt.className || "",
       };
     }
-    return { label: String(opt), triggerLabel: String(opt), value: String(opt), isHeader: false };
+    return { label: String(opt), triggerLabel: String(opt), value: String(opt), icon: null, isHeader: false };
   });
 
   const selectedOption = normalizedOptions.find((opt) => !opt.isHeader && opt.value === String(value));
@@ -140,7 +166,14 @@ export default function CustomSelect({
         aria-expanded={isOpen}
       >
         <span className={styles.selectedLabel}>
-          {selectedOption ? (selectedOption.triggerLabel || selectedOption.label) : placeholder}
+          {selectedOption ? (
+            <>
+              {selectedOption.icon && <span className={styles.optionIcon}>{selectedOption.icon}</span>}
+              <span className={styles.labelText}>{selectedOption.triggerLabel || selectedOption.label}</span>
+            </>
+          ) : (
+            placeholder
+          )}
         </span>
         <span className={`${styles.arrow} ${isOpen ? styles.arrowUp : ""}`}>
           ▾
@@ -149,7 +182,11 @@ export default function CustomSelect({
 
       {/* Dropdown Menu Popup */}
       {isOpen && !disabled && (
-        <div className={`${styles.dropdown} ${dropdownClassName}`}>
+        <div
+          className={`${styles.dropdown} ${
+            computedAlign === "right" ? styles.alignRight : styles.alignLeft
+          } ${dropdownClassName}`}
+        >
 
           <div ref={listRef} className={styles.list} role="listbox">
             {normalizedOptions.length === 0 ? (
@@ -167,12 +204,15 @@ export default function CustomSelect({
                 return (
                   <div
                     key={opt.value}
-                    className={`${styles.item} ${isSelected ? styles.itemSelected : ""}`}
+                    className={`${styles.item} ${isSelected ? styles.itemSelected : ""} ${opt.className || ""}`}
                     onClick={() => handleSelect(opt.value)}
                     role="option"
                     aria-selected={isSelected}
                   >
-                    <span className={styles.itemLabel}>{opt.label}</span>
+                    <span className={styles.itemLabel}>
+                      {opt.icon && <span className={styles.optionIcon}>{opt.icon}</span>}
+                      <span className={styles.labelText}>{opt.label}</span>
+                    </span>
                     {isSelected && <span className={styles.checkIcon}>✓</span>}
                   </div>
                 );

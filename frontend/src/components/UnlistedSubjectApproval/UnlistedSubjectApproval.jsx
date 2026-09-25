@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import classes from "./UnlistedSubjectApproval.module.css";
 import {
   getAdminSubjectRequests,
@@ -86,6 +86,43 @@ export default function UnlistedSubjectApproval() {
     reason: "",
     isSubmitting: false,
   });
+
+  // Sliding indicator state for segmented control
+  const tabRefs = useRef({});
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const [indicatorReady, setIndicatorReady] = useState(false);
+
+  const updateIndicator = useCallback(() => {
+    const activeEl = tabRefs.current[selectedStatus];
+    if (activeEl) {
+      setIndicatorStyle({
+        left: activeEl.offsetLeft,
+        width: activeEl.offsetWidth,
+      });
+    }
+  }, [selectedStatus]);
+
+  useEffect(() => {
+    updateIndicator();
+    const timer = setTimeout(() => setIndicatorReady(true), 40);
+    window.addEventListener("resize", updateIndicator);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", updateIndicator);
+    };
+  }, [updateIndicator]);
+
+  const handleTabChange = (tabId) => {
+    setSelectedStatus(tabId);
+    setCurrentPage(1);
+    const targetEl = tabRefs.current[tabId];
+    if (targetEl) {
+      setIndicatorStyle({
+        left: targetEl.offsetLeft,
+        width: targetEl.offsetWidth,
+      });
+    }
+  };
 
   // Debounce search input
   useEffect(() => {
@@ -290,34 +327,32 @@ export default function UnlistedSubjectApproval() {
     <div className={classes.pageContainer}>
       {/* Header */}
       <header className={classes.header}>
-        <div className={classes.titleRow}>
-          <h1 className={classes.title}>Unlisted Subject Approvals</h1>
-          <span className={classes.countBadge}>
-            {loading ? "..." : `${totalCount} ${totalCount === 1 ? "Request" : "Requests"}`}
-          </span>
-        </div>
+        <h1 className={classes.title}>Unlisted Subject Approvals</h1>
         <p className={classes.subtitle}>
           Review student requests to add past or unlisted subjects to curriculum dropdowns
         </p>
 
         {/* Status Tabs */}
         <div className={classes.tabBar}>
+          <div
+            className={`${classes.tabIndicator} ${indicatorReady ? classes.tabIndicatorTransition : ""}`}
+            style={{
+              transform: `translateX(${indicatorStyle.left}px)`,
+              width: `${indicatorStyle.width}px`,
+              opacity: indicatorStyle.width ? 1 : 0,
+            }}
+          />
           {STATUS_TABS.map((tab) => {
             const isActive = selectedStatus === tab.id;
             return (
               <button
                 key={tab.id}
+                ref={(el) => (tabRefs.current[tab.id] = el)}
                 type="button"
                 className={`${classes.tabBtn} ${isActive ? classes.activeTab : ""}`}
-                onClick={() => {
-                  setSelectedStatus(tab.id);
-                  setCurrentPage(1);
-                }}
+                onClick={() => handleTabChange(tab.id)}
               >
                 <span>{tab.label}</span>
-                {tab.id === "pending" && pendingCount > 0 && (
-                  <span className={classes.tabPill}>{pendingCount}</span>
-                )}
               </button>
             );
           })}

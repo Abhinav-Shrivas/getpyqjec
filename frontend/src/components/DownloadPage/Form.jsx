@@ -203,6 +203,7 @@ export default function FormPYQ({ fetchFn }) {
               <CustomSelect
                 id="subject"
                 name="subject_code"
+                align="right"
                 value={selectedValues.subject}
                 placeholder={
                   !selectedValues.branch

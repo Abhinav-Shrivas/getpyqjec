@@ -283,7 +283,28 @@ export default function UploadFormPYQ({ uploadFn }) {
     }
 
     options.push({ label: "── Other / Unlisted ──", isHeader: true });
-    options.push({ value: "__UNLISTED__", label: "+ Add Past / Unlisted Subject" });
+    options.push({
+      value: "__UNLISTED__",
+      label: "Add unlisted subjects",
+      triggerLabel: "Add unlisted subjects",
+      icon: (
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ color: "#c084fc", flexShrink: 0 }}
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="16" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+      ),
+    });
 
     return options;
   }, [selectedValues.semester, selectedValues.branch, dynamicSubjects]);
@@ -573,6 +594,7 @@ export default function UploadFormPYQ({ uploadFn }) {
               <CustomSelect
                 id="subject"
                 name="subject"
+                align="right"
                 value={selectedValues.subject}
                 placeholder={
                   !selectedValues.branch
@@ -630,7 +652,7 @@ export default function UploadFormPYQ({ uploadFn }) {
 
               <div className={styles.formRow} style={{ marginTop: "4px" }}>
                 <div className={styles.formGroup}>
-                  <label className={styles.label}>Subject Code *</label>
+                  <label className={styles.label}>Subject Code</label>
                   <input
                     type="text"
                     className={styles.manualYear}
@@ -642,7 +664,7 @@ export default function UploadFormPYQ({ uploadFn }) {
                   <span className={styles.fieldHint}>Official university course code</span>
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label}>Subject Name *</label>
+                  <label className={styles.label}>Subject Name</label>
                   <input
                     type="text"
                     className={styles.manualYear}
@@ -809,7 +831,7 @@ export default function UploadFormPYQ({ uploadFn }) {
         <button
           type="submit"
           form="pyqForm"
-          className={`${styles.submitBtn} ${isUnlistedSubject ? styles.requestBtn : ""}`}
+          className={styles.submitBtn}
           disabled={isBusy}
         >
           {modalState?.type === "requesting"
@@ -818,7 +840,7 @@ export default function UploadFormPYQ({ uploadFn }) {
             ? "Uploading..."
             : isUnlistedSubject
             ? "Submit Subject Request"
-            : "Submit"}
+            : "Upload"}
         </button>
         <button type="reset" form="pyqForm" className={styles.resetBtn} disabled={isBusy}>
           Reset

@@ -11,10 +11,11 @@ import {
   rejectVerification,
   deleteVerificationDocument,
 } from "../../http";
+import CustomSelect from "../CustomSelect/CustomSelect";
 import classes from "./VerificationPage.module.css";
 
 const STATUS_FILTER_OPTIONS = [
-  { value: "", label: "All Statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "pending", label: "Pending Review" },
   { value: "verified", label: "Verified" },
   { value: "rejected", label: "Rejected" },
@@ -159,7 +160,7 @@ export default function VerificationPage() {
     setAdminLoading(true);
     try {
       const params = {};
-      if (adminFilter) params.status = adminFilter;
+      if (adminFilter && adminFilter !== "all") params.status = adminFilter;
       if (adminSearch) params.search = adminSearch;
       const data = await getAdminVerifications(params);
       setAdminSubmissions(data.results || []);
@@ -548,40 +549,15 @@ export default function VerificationPage() {
         <div className={classes.adminContent}>
           <div className={classes.adminToolbar}>
             <div className={classes.filterGroup}>
-              <div className={classes.selectWrapper}>
-                <span className={classes.selectLabel}>
-                  {STATUS_FILTER_OPTIONS.find((opt) => opt.value === adminFilter)?.label || "All Statuses"}
-                </span>
-                <svg
-                  className={classes.selectArrow}
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#EFEEE8"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-                <select
-                  className={classes.nativeSelect}
-                  value={adminFilter}
-                  onChange={(e) => setAdminFilter(e.target.value)}
-                  aria-label="Filter status"
-                >
-                  {STATUS_FILTER_OPTIONS.map((opt) => (
-                    <option
-                      key={opt.value}
-                      value={opt.value}
-                      style={{ background: "#181726", color: "#EFEEE8" }}
-                    >
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <CustomSelect
+                id="admin-status-filter"
+                name="admin-status-filter"
+                value={adminFilter || "all"}
+                placeholder="All Statuses"
+                options={STATUS_FILTER_OPTIONS}
+                onChange={(val) => setAdminFilter(val === "all" ? "" : val)}
+                triggerClassName={classes.statusFilterTrigger}
+              />
             </div>
             <div className={classes.searchGroup}>
               <input
