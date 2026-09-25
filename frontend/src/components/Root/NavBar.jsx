@@ -164,13 +164,22 @@ export default function NavBar() {
                 </NavLink>
 
                 {isAdmin && (
-                  <NavLink
-                    to="/admin/upload-history"
-                    className={classes["dropdown-item"]}
-                    onClick={() => setShowDropdown(false)}
-                  >
-                    Upload History
-                  </NavLink>
+                  <>
+                    <NavLink
+                      to="/admin/unlisted-subjects"
+                      className={classes["dropdown-item"]}
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      Unlisted Subject Approval
+                    </NavLink>
+                    <NavLink
+                      to="/admin/upload-history"
+                      className={classes["dropdown-item"]}
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      Upload History
+                    </NavLink>
+                  </>
                 )}
 
                 <button

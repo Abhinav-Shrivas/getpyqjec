@@ -1,9 +1,27 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
-from .models import PYQ, StudentVerification
+from .models import PYQ, StudentVerification, Subject, SubjectRequest
 
 User = get_user_model()
+
+
+@admin.register(Subject)
+class SubjectAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "branch", "semester", "is_current", "created_at")
+    list_filter = ("branch", "semester", "is_current")
+    search_fields = ("code", "name", "branch")
+    list_editable = ("is_current",)
+    ordering = ("branch", "semester", "-is_current", "code")
+
+
+@admin.register(SubjectRequest)
+class SubjectRequestAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "branch", "semester", "user", "status", "submitted_at", "reviewed_by")
+    list_filter = ("status", "branch", "semester")
+    search_fields = ("code", "name", "user__rno", "user__name", "user__email")
+    ordering = ("-submitted_at",)
+    readonly_fields = ("user", "submitted_at", "reviewed_at", "reviewed_by")
 
 
 @admin.register(User)

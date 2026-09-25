@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
-from .models import StudentVerification, PYQ
+from .models import StudentVerification, PYQ, SubjectRequest
 from .curriculum import get_subject_name_by_code
 
 User = get_user_model()
@@ -110,3 +110,29 @@ class VerificationAdminDetailSerializer(serializers.ModelSerializer):
 
     def get_reviewed_by_rno(self, obj):
         return obj.reviewed_by.rno if obj.reviewed_by else None
+
+
+class SubjectRequestSerializer(serializers.ModelSerializer):
+    user_rno = serializers.CharField(source='user.rno', read_only=True)
+    user_name = serializers.CharField(source='user.name', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    reviewed_by_rno = serializers.CharField(source='reviewed_by.rno', read_only=True, default='—')
+
+    class Meta:
+        model = SubjectRequest
+        fields = (
+            'id',
+            'user_rno',
+            'user_name',
+            'user_email',
+            'branch',
+            'semester',
+            'code',
+            'name',
+            'status',
+            'submitted_at',
+            'reviewed_at',
+            'reviewed_by_rno',
+            'rejection_reason',
+        )
+        read_only_fields = fields
