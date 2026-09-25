@@ -24,7 +24,7 @@ export default function UploadDataPage() {
   return (
     <div className="upload-page">
       {!canUpload ? (
-        <div className={classes.uploadPage} style={{ minHeight: "70vh" }}>
+        <div className={classes.uploadPage} style={{ minHeight: "calc(100vh - 58px)" }}>
           <h1 className={classes.heading}>Upload PYQ</h1>
           <p className={classes.subtitle}>
             Share previous year question papers with fellow students
