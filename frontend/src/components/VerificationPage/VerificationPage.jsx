@@ -15,7 +15,7 @@ import CustomSelect from "../CustomSelect/CustomSelect";
 import classes from "./VerificationPage.module.css";
 
 const STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All Statuses" },
+  { value: "ALL", label: "All Statuses" },
   { value: "pending", label: "Pending Review" },
   { value: "verified", label: "Verified" },
   { value: "rejected", label: "Rejected" },
@@ -160,7 +160,7 @@ export default function VerificationPage() {
     setAdminLoading(true);
     try {
       const params = {};
-      if (adminFilter && adminFilter !== "all") params.status = adminFilter;
+      if (adminFilter && adminFilter !== "ALL") params.status = adminFilter;
       if (adminSearch) params.search = adminSearch;
       const data = await getAdminVerifications(params);
       setAdminSubmissions(data.results || []);
@@ -552,10 +552,10 @@ export default function VerificationPage() {
               <CustomSelect
                 id="admin-status-filter"
                 name="admin-status-filter"
-                value={adminFilter || "all"}
+                value={adminFilter}
                 placeholder="All Statuses"
                 options={STATUS_FILTER_OPTIONS}
-                onChange={(val) => setAdminFilter(val === "all" ? "" : val)}
+                onChange={(val) => setAdminFilter(val === "ALL" ? "" : val)}
                 triggerClassName={classes.statusFilterTrigger}
               />
             </div>

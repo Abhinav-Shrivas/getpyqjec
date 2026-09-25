@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import classes from "./UnlistedSubjectApproval.module.css";
 import {
   getAdminSubjectRequests,
@@ -52,16 +52,16 @@ function formatDateTime(isoString) {
   }
 }
 
-const STATUS_TABS = [
-  { id: "pending", label: "Pending Review" },
-  { id: "approved", label: "Approved" },
-  { id: "rejected", label: "Rejected" },
-  { id: "all", label: "All Requests" },
+const STATUS_OPTIONS = [
+  { value: "ALL", label: "All Statuses" },
+  { value: "pending", label: "Pending Review" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
 ];
 
 export default function UnlistedSubjectApproval() {
   // Filters & Search
-  const [selectedStatus, setSelectedStatus] = useState("pending");
+  const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [selectedSemester, setSelectedSemester] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -86,43 +86,6 @@ export default function UnlistedSubjectApproval() {
     reason: "",
     isSubmitting: false,
   });
-
-  // Sliding indicator state for segmented control
-  const tabRefs = useRef({});
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-  const [indicatorReady, setIndicatorReady] = useState(false);
-
-  const updateIndicator = useCallback(() => {
-    const activeEl = tabRefs.current[selectedStatus];
-    if (activeEl) {
-      setIndicatorStyle({
-        left: activeEl.offsetLeft,
-        width: activeEl.offsetWidth,
-      });
-    }
-  }, [selectedStatus]);
-
-  useEffect(() => {
-    updateIndicator();
-    const timer = setTimeout(() => setIndicatorReady(true), 40);
-    window.addEventListener("resize", updateIndicator);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("resize", updateIndicator);
-    };
-  }, [updateIndicator]);
-
-  const handleTabChange = (tabId) => {
-    setSelectedStatus(tabId);
-    setCurrentPage(1);
-    const targetEl = tabRefs.current[tabId];
-    if (targetEl) {
-      setIndicatorStyle({
-        left: targetEl.offsetLeft,
-        width: targetEl.offsetWidth,
-      });
-    }
-  };
 
   // Debounce search input
   useEffect(() => {
@@ -184,6 +147,7 @@ export default function UnlistedSubjectApproval() {
 
   // Reset filters
   const handleResetFilters = () => {
+    setSelectedStatus("");
     setSelectedBranch("");
     setSelectedSemester("");
     setSearchInput("");
@@ -331,32 +295,6 @@ export default function UnlistedSubjectApproval() {
         <p className={classes.subtitle}>
           Review student requests to add past or unlisted subjects to curriculum dropdowns
         </p>
-
-        {/* Status Tabs */}
-        <div className={classes.tabBar}>
-          <div
-            className={`${classes.tabIndicator} ${indicatorReady ? classes.tabIndicatorTransition : ""}`}
-            style={{
-              transform: `translateX(${indicatorStyle.left}px)`,
-              width: `${indicatorStyle.width}px`,
-              opacity: indicatorStyle.width ? 1 : 0,
-            }}
-          />
-          {STATUS_TABS.map((tab) => {
-            const isActive = selectedStatus === tab.id;
-            return (
-              <button
-                key={tab.id}
-                ref={(el) => (tabRefs.current[tab.id] = el)}
-                type="button"
-                className={`${classes.tabBtn} ${isActive ? classes.activeTab : ""}`}
-                onClick={() => handleTabChange(tab.id)}
-              >
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
       </header>
 
       {/* Notifications */}
@@ -381,6 +319,51 @@ export default function UnlistedSubjectApproval() {
       {/* Filter & Search Toolbar */}
       <div className={classes.toolbarCard}>
         <div className={classes.filtersGrid}>
+          {/* Status Filter */}
+          <div className={classes.filterItem}>
+            <CustomSelect
+              id="status-filter"
+              name="status-filter"
+              value={selectedStatus}
+              placeholder="All Statuses"
+              options={STATUS_OPTIONS}
+              onChange={(val) => {
+                setSelectedStatus(val === "ALL" ? "" : val);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+
+          {/* Branch Filter */}
+          <div className={classes.filterItem}>
+            <CustomSelect
+              id="branch-filter"
+              name="branch-filter"
+              value={selectedBranch}
+              placeholder="All Branches"
+              options={branchOptions}
+              onChange={(val) => {
+                setSelectedBranch(val === "ALL" ? "" : val);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+
+          {/* Semester Filter */}
+          <div className={classes.filterItem}>
+            <CustomSelect
+              id="sem-filter"
+              name="sem-filter"
+              value={selectedSemester}
+              placeholder="All Semesters"
+              options={semesterOptions}
+              onChange={(val) => {
+                setSelectedSemester(val === "ALL" ? "" : val);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+
           {/* Search Input */}
           <div className={classes.searchGroup}>
             <svg
@@ -416,38 +399,8 @@ export default function UnlistedSubjectApproval() {
             )}
           </div>
 
-          {/* Branch Filter */}
-          <div className={classes.filterItem}>
-            <CustomSelect
-              id="branch-filter"
-              name="branch-filter"
-              value={selectedBranch}
-              placeholder="All Branches"
-              options={branchOptions}
-              onChange={(val) => {
-                setSelectedBranch(val === "ALL" ? "" : val);
-                setCurrentPage(1);
-              }}
-            />
-          </div>
-
-          {/* Semester Filter */}
-          <div className={classes.filterItem}>
-            <CustomSelect
-              id="sem-filter"
-              name="sem-filter"
-              value={selectedSemester}
-              placeholder="All Semesters"
-              options={semesterOptions}
-              onChange={(val) => {
-                setSelectedSemester(val === "ALL" ? "" : val);
-                setCurrentPage(1);
-              }}
-            />
-          </div>
-
           {/* Reset Filters */}
-          {(selectedBranch || selectedSemester || searchInput) && (
+          {(selectedStatus || selectedBranch || selectedSemester || searchInput) && (
             <button
               type="button"
               className={classes.resetBtn}
