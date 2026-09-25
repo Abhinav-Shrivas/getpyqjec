@@ -14,12 +14,6 @@ export default function RootLayout() {
     document.body.scrollTop = 0;
   }, [location.pathname]);
 
-  // Hide footer on student verification and subject verification pages
-  const hiddenRoutes = ["/verify", "/admin/unlisted-subjects"];
-  const isFooterHidden = hiddenRoutes.some(
-    (route) => location.pathname === route || location.pathname.startsWith(`${route}/`)
-  );
-
   return (
     <>
       <Background />
@@ -49,7 +43,7 @@ export default function RootLayout() {
         >
           <Outlet />
         </main>
-        {!isFooterHidden && <Footer />}
+        <Footer />
       </div>
     </>
   );

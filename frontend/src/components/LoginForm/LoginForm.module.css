@@ -1,11 +1,4 @@
 @font-face {
-  font-family: 'Outfit Medium';
-  src: url('../../assets/Outfit/static/Outfit-Medium.ttf') format('truetype');
-  font-weight: 500;
-  font-style: normal;
-}
-
-@font-face {
   font-family: 'Degular Medium';
   src: url('../../assets/degular-font-family-1737058454-0/Degular-Medium.otf') format('opentype');
   font-weight: 500;
@@ -31,9 +24,9 @@
 }
 
 .pageHeading {
-  font-family: 'Outfit Medium', sans-serif;
+  font-family: 'Degular Medium', sans-serif;
   font-weight: 500;
-  font-size: 2.2rem;
+  font-size: 2.3rem;
   color: #EFEEE8;
   margin-bottom: 8px;
   text-align: center;
@@ -74,7 +67,7 @@
 }
 
 .heading {
-  font-family: 'Outfit Medium', sans-serif;
+  font-family: 'Degular Medium', sans-serif;
   font-weight: 500;
   font-size: 1.8rem;
   color: #EFEEE8;
