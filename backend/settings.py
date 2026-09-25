@@ -36,13 +36,27 @@ _host_ip = os.environ.get('VITE_HOST_IP', '')
 _render_host = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 _allowed_hosts_env = os.environ.get('ALLOWED_HOSTS')
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "api.getpyqjec.in",
+    "getpyqjec.in",
+    "www.getpyqjec.in",
+    ".getpyqjec.in",
+    ".onrender.com",
+]
 if _host_ip:
     ALLOWED_HOSTS.append(_host_ip)
 if _render_host:
     ALLOWED_HOSTS.append(_render_host)
 if _allowed_hosts_env:
-    ALLOWED_HOSTS.extend([h.strip() for h in _allowed_hosts_env.split(',') if h.strip()])
+    for h in _allowed_hosts_env.split(','):
+        h = h.strip()
+        if h:
+            # Strip scheme and paths if user entered e.g. https://api.getpyqjec.in/
+            h = h.replace('https://', '').replace('http://', '').split('/')[0]
+            if h and h not in ALLOWED_HOSTS:
+                ALLOWED_HOSTS.append(h)
 
 AUTH_USER_MODEL = 'core.User'
 
@@ -182,11 +196,13 @@ STORAGES = {
 }
 
 # Frontend & CORS Configuration
-FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173').rstrip('/')
+FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'https://www.getpyqjec.in').rstrip('/')
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://getpyqjec.in",
+    "https://www.getpyqjec.in",
 ]
 if _host_ip:
     CORS_ALLOWED_ORIGINS.append(f"http://{_host_ip}:5173")
@@ -195,7 +211,19 @@ if FRONTEND_BASE_URL and FRONTEND_BASE_URL not in CORS_ALLOWED_ORIGINS:
 
 extra_cors = os.environ.get('CORS_ALLOWED_ORIGINS')
 if extra_cors:
-    CORS_ALLOWED_ORIGINS.extend([o.strip() for o in extra_cors.split(',') if o.strip()])
+    for o in extra_cors.split(','):
+        o = o.strip()
+        if o:
+            if not o.startswith('http://') and not o.startswith('https://'):
+                o = f"https://{o}"
+            o = o.rstrip('/')
+            if o not in CORS_ALLOWED_ORIGINS:
+                CORS_ALLOWED_ORIGINS.append(o)
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.getpyqjec\.in$",
+    r"^https://.*\.vercel\.app$",
+]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ["Content-Disposition", "X-missing_years", "X-missing_details"]
@@ -203,11 +231,15 @@ CORS_EXPOSE_HEADERS = ["Content-Disposition", "X-missing_years", "X-missing_deta
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://api.getpyqjec.in",
+    "https://getpyqjec.in",
+    "https://www.getpyqjec.in",
 ]
 if _render_host:
     CSRF_TRUSTED_ORIGINS.append(f"https://{_render_host}")
-if FRONTEND_BASE_URL.startswith("http"):
-    CSRF_TRUSTED_ORIGINS.append(FRONTEND_BASE_URL)
+for origin in CORS_ALLOWED_ORIGINS:
+    if origin.startswith("http") and origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origin)
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

@@ -65,7 +65,7 @@ const FAQS = [
     id: "contact-support",
     question: "How do I report an incorrect paper or contact the team?",
     answer:
-      "If you find an incorrectly tagged paper, duplicate upload, or a broken file, please email us directly at getpyqjec@gmail.com with the subject name and paper year.",
+      "If you find an incorrectly tagged paper, duplicate upload, or a broken file, please email us directly at getpyqjec@gmail.com with the subject name, branch, semester and paper year. We will try to resolve the issue as soon as possible.",
   },
 ];
 
