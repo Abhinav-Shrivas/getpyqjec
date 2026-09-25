@@ -33,13 +33,14 @@ export default function CustomSelect({
       return {
         label: opt.label !== undefined ? opt.label : String(opt.value),
         triggerLabel: opt.triggerLabel !== undefined ? opt.triggerLabel : (opt.label !== undefined ? opt.label : String(opt.value)),
-        value: String(opt.value),
+        value: opt.value !== undefined ? String(opt.value) : "",
+        isHeader: !!opt.isHeader || !!opt.disabled,
       };
     }
-    return { label: String(opt), triggerLabel: String(opt), value: String(opt) };
+    return { label: String(opt), triggerLabel: String(opt), value: String(opt), isHeader: false };
   });
 
-  const selectedOption = normalizedOptions.find((opt) => opt.value === String(value));
+  const selectedOption = normalizedOptions.find((opt) => !opt.isHeader && opt.value === String(value));
 
 
   // Close when clicking outside
@@ -154,7 +155,14 @@ export default function CustomSelect({
             {normalizedOptions.length === 0 ? (
               <div className={styles.emptyItem}>No options available</div>
             ) : (
-              normalizedOptions.map((opt) => {
+              normalizedOptions.map((opt, idx) => {
+                if (opt.isHeader) {
+                  return (
+                    <div key={`header-${idx}`} className={styles.headerItem}>
+                      {opt.label}
+                    </div>
+                  );
+                }
                 const isSelected = selectedOption && selectedOption.value === opt.value;
                 return (
                   <div

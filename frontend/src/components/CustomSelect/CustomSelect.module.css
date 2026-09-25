@@ -175,3 +175,23 @@
   color: rgba(239, 238, 232, 0.4);
   font-size: 13px;
 }
+
+.headerItem {
+  padding: 8px 12px 4px;
+  font-family: 'Degular Medium', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #a78bfa;
+  border-top: 1px solid rgba(180, 160, 220, 0.12);
+  margin-top: 4px;
+  user-select: none;
+  pointer-events: none;
+}
+
+.headerItem:first-child {
+  border-top: none;
+  margin-top: 0;
+}
+

@@ -83,11 +83,11 @@ SUBJECTS = {   'AIDS': {   'eighth': [   ['Professional Elective Course-III', 'A
                              ['Design and Analysis of Algorithms', 'CS44'],
                              [   'Computer Organization and Architecture',
                                  'CS45']],
-               'seventh': [   ['Computer Vision', 'CS701M'],
-                              ['Compiler Design', 'CS702M'],
-                              ['Cryptography & Network Security', 'CS703M'],
-                              ['Professional Elective Course-II', 'CS704M'],
-                              ['Open Elective Course-III', 'CS705M']],
+               'seventh': [   ['Professional Elective Course - III', 'CS71'],
+                              ['Open Elective Course - II', 'CS72'],
+                              ['Compiler Design', 'CS73'],
+                              ['Internet of Things', 'CS74'],
+                              ['Computer Vision', 'CS75']],
                'sixth': [   ['Professional Elective Course-II', 'CS61'],
                             ['Open Elective Course-I', 'CS62'],
                             ['Computer Networks', 'CS63'],
@@ -227,11 +227,13 @@ SUBJECTS = {   'AIDS': {   'eighth': [   ['Professional Elective Course-III', 'A
                             ['Principles of Communication', 'IT44'],
                             [   'System Analysis and Software Engineering',
                                 'IT45']],
-              'seventh': [   ['Cloud Computing', 'IT701M'],
-                             ['Information Retrieval', 'IT702M'],
-                             ['Machine Learning', 'IT703M'],
-                             ['Professional Elective Course-II', 'IT704M'],
-                             ['Open Elective Course-III', 'IT705M']],
+              'seventh': [   ['Professional Elective Course - III', 'IT71'],
+                             ['Open Elective Course - II', 'IT72'],
+                             ['Information and Cyber Security', 'IT73'],
+                             [   'Introduction to Artificial Intelligence & '
+                                 'Machine Learning',
+                                 'IT74'],
+                             ['Internet of Things', 'IT75']],
               'sixth': [   ['Professional Elective Course-II', 'IT61'],
                            ['Open Elective Course-I', 'IT62'],
                            ['Network Management', 'IT63'],
@@ -300,12 +302,44 @@ SUBJECTS = {   'AIDS': {   'eighth': [   ['Professional Elective Course-III', 'A
 def get_expected_subjects(branch: str, semester: int):
     """
     Returns a list of [subject_name, subject_code] for the given branch and semester.
-    For semesters 1 and 2, subjects are common for all branches.
+    Queries the Subject model (is_current=True) first, falling back to static SUBJECTS if db is unready.
     """
     try:
         sem_num = int(semester)
     except (ValueError, TypeError):
         return []
+
+    b = (branch or '').strip().upper()
+
+    try:
+        from core.models import Subject
+        if sem_num <= 2:
+            db_subjs = list(
+                Subject.objects.filter(
+                    branch__in=['CommonForAllBranches', b, 'COMMONFORALLBRANCHES'],
+                    semester=sem_num,
+                    is_current=True,
+                ).values_list('name', 'code')
+            )
+            if db_subjs:
+                return db_subjs
+        else:
+            branch_aliases = [b]
+            if b == 'CS':
+                branch_aliases.append('CSE')
+            elif b == 'CSE':
+                branch_aliases.append('CS')
+            db_subjs = list(
+                Subject.objects.filter(
+                    branch__in=branch_aliases,
+                    semester=sem_num,
+                    is_current=True,
+                ).values_list('name', 'code')
+            )
+            if db_subjs:
+                return db_subjs
+    except Exception:
+        pass
 
     ord_name = ORDINALS.get(sem_num)
     if not ord_name:
@@ -314,9 +348,12 @@ def get_expected_subjects(branch: str, semester: int):
     if sem_num <= 2:
         return SUBJECTS.get('CommonForAllBranches', {}).get(ord_name, [])
 
-    b = (branch or '').strip().upper()
     branch_map = {k.upper(): k for k in SUBJECTS.keys()}
     actual_key = branch_map.get(b)
+    if not actual_key and b == 'CS':
+        actual_key = 'CSE'
+    elif not actual_key and b == 'CSE':
+        actual_key = 'CS'
     return SUBJECTS.get(actual_key, {}).get(ord_name, [])
 
 
@@ -329,8 +366,17 @@ for _branch_data in SUBJECTS.values():
 
 
 def get_subject_name_by_code(code: str, default: str = None) -> str:
-    """Returns the readable subject name for a given subject code."""
+    """Returns the readable subject name for a given subject code, checking Subject table first."""
     if not code:
         return default or ""
-    return SUBJECT_CODE_TO_NAME.get(code.strip(), default if default is not None else code)
+    clean_code = code.strip().upper()
+    try:
+        from core.models import Subject
+        subj = Subject.objects.filter(code__iexact=clean_code).first()
+        if subj:
+            return subj.name
+    except Exception:
+        pass
+    return SUBJECT_CODE_TO_NAME.get(clean_code, default if default is not None else code)
+
 

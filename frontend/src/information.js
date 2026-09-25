@@ -78,11 +78,11 @@ const subjects = {
       ["Cloud Computing", "IT65"],
     ],
     seventh: [
-      ["Cloud Computing", "IT701M"],
-      ["Information Retrieval", "IT702M"],
-      ["Machine Learning", "IT703M"],
-      ["Professional Elective Course-II", "IT704M"],
-      ["Open Elective Course-III", "IT705M"],
+      ["Professional Elective Course - III", "IT71"],
+      ["Open Elective Course - II", "IT72"],
+      ["Information and Cyber Security", "IT73"],
+      ["Introduction to Artificial Intelligence & Machine Learning", "IT74"],
+      ["Internet of Things", "IT75"],
     ],
     eighth: [
       ["Professional Elective Course-III", "IT801M"],
@@ -119,11 +119,11 @@ const subjects = {
       ["Cryptography and Network Security", "CS65"],
     ],
     seventh: [
-      ["Computer Vision", "CS701M"],
-      ["Compiler Design", "CS702M"],
-      ["Cryptography & Network Security", "CS703M"],
-      ["Professional Elective Course-II", "CS704M"],
-      ["Open Elective Course-III", "CS705M"],
+      ["Professional Elective Course - III", "CS71"],
+      ["Open Elective Course - II", "CS72"],
+      ["Compiler Design", "CS73"],
+      ["Internet of Things", "CS74"],
+      ["Computer Vision", "CS75"],
     ],
     eighth: [
       ["Professional Elective Course-III", "CS801M"],

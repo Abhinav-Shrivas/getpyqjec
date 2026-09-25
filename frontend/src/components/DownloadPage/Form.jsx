@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import styles from "./Form.module.css";
 import {
   branches,
@@ -6,6 +6,7 @@ import {
   semesters,
   ordinals,
 } from "../../information";
+import { fetchSubjects } from "../../http";
 import CustomSelect from "../CustomSelect/CustomSelect";
 
 const initialState = {
@@ -40,22 +41,74 @@ export default function FormPYQ({ fetchFn }) {
     }));
   }, [selectedValues.semester]);
 
+  const [dynamicSubjects, setDynamicSubjects] = useState({ current: [], past: [] });
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+
+  useEffect(() => {
+    if (!selectedValues.semester || !selectedValues.branch) {
+      setDynamicSubjects({ current: [], past: [] });
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingSubjects(true);
+
+    fetchSubjects(selectedValues.branch, selectedValues.semester)
+      .then((data) => {
+        if (isMounted) {
+          setDynamicSubjects({
+            current: data.current_subjects || [],
+            past: data.past_subjects || [],
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load dynamic subjects, falling back to static list", err);
+        const sem = selectedValues.semester;
+        const branch = selectedValues.branch;
+        const branchSubjects =
+          Number(sem) <= 2
+            ? subjects.CommonForAllBranches?.[ordinals[sem]]
+            : subjects[branch]?.[ordinals[sem]];
+        if (isMounted && branchSubjects) {
+          setDynamicSubjects({
+            current: branchSubjects.map((s) => ({ code: s[1], name: s[0] })),
+            past: [],
+          });
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingSubjects(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedValues.branch, selectedValues.semester]);
+
   const subjectsToShow = useMemo(() => {
     if (!selectedValues.semester || !selectedValues.branch) return [];
-    const sem = selectedValues.semester;
-    const branch = selectedValues.branch;
-    const branchSubjects =
-      Number(sem) <= 2
-        ? subjects.CommonForAllBranches?.[ordinals[sem]]
-        : subjects[branch]?.[ordinals[sem]];
-    if (branchSubjects) {
-      return [
-        { value: "All", label: "ALL SUBJECTS" },
-        ...branchSubjects.map((s) => ({ value: s[1], label: s[0] })),
-      ];
+
+    const options = [{ value: "All", label: "ALL SUBJECTS" }];
+
+    if (dynamicSubjects.current.length > 0) {
+      if (dynamicSubjects.past.length > 0) {
+        options.push({ label: "── Current Curriculum ──", isHeader: true });
+      }
+      dynamicSubjects.current.forEach((s) => {
+        options.push({ value: s.code, label: `${s.name} (${s.code})` });
+      });
     }
-    return [];
-  }, [selectedValues.semester, selectedValues.branch]);
+
+    if (dynamicSubjects.past.length > 0) {
+      options.push({ label: "── Past / Previously Taught Subjects ──", isHeader: true });
+      dynamicSubjects.past.forEach((s) => {
+        options.push({ value: s.code, label: `${s.name} (${s.code})` });
+      });
+    }
+
+    return options;
+  }, [selectedValues.semester, selectedValues.branch, dynamicSubjects]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -151,10 +204,16 @@ export default function FormPYQ({ fetchFn }) {
                 id="subject"
                 name="subject_code"
                 value={selectedValues.subject}
-                placeholder={!selectedValues.branch ? "Select Branch First" : "Select Subject"}
+                placeholder={
+                  !selectedValues.branch
+                    ? "Select Branch First"
+                    : loadingSubjects
+                    ? "Loading subjects..."
+                    : "Select Subject"
+                }
                 options={subjectsToShow}
                 required
-                disabled={!selectedValues.branch}
+                disabled={!selectedValues.branch || loadingSubjects}
                 onChange={(val) =>
                   setSelectedValues((prev) => ({
                     ...prev,
