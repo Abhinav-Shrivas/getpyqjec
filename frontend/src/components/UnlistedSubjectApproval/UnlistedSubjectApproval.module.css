@@ -15,6 +15,8 @@
 .pageContainer {
   min-height: calc(100vh - 80px);
   max-width: 1240px;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 36px 20px 80px;
   color: #EFEEE8;
@@ -70,6 +72,9 @@
 .toolbarCard {
   position: relative;
   z-index: 30;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.06) 0%,
@@ -95,6 +100,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .searchGroup {
@@ -102,6 +109,9 @@
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .searchIcon {
@@ -113,6 +123,9 @@
 
 .searchInput {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 10px 38px 10px 40px;
   background: rgba(14, 12, 22, 0.7);
   border: 1px solid rgba(180, 160, 220, 0.22);
@@ -154,6 +167,7 @@
 .filterItem {
   flex: 0 1 185px;
   min-width: 175px;
+  box-sizing: border-box;
 }
 
 .resetBtn {
@@ -239,15 +253,22 @@
     inset 0 -1px 1px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .tableWrapper {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
   width: 100%;
+  min-width: 820px;
   border-collapse: collapse;
   text-align: left;
   font-size: 0.92rem;
@@ -760,9 +781,65 @@
   .filtersGrid {
     flex-direction: column;
     align-items: stretch;
+    width: 100%;
   }
 
   .filterItem {
+    width: 100%;
+    min-width: 0;
     flex: 1 1 100%;
+  }
+
+  .searchGroup {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .resetBtn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .pageContainer {
+    padding: 20px 12px 60px;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .subtitle {
+    font-size: 0.82rem;
+    margin-bottom: 20px;
+  }
+
+  .toolbarCard {
+    padding: 14px 12px;
+    border-radius: 16px;
+  }
+
+  .tableContainer {
+    border-radius: 16px;
+  }
+
+  .table th, .table td {
+    padding: 12px 14px;
+    font-size: 0.85rem;
+  }
+
+  .paginationBar {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 12px;
+  }
+
+  .modalCard {
+    padding: 18px 14px;
+    border-radius: 14px;
+    max-width: min(520px, calc(100vw - 20px));
   }
 }

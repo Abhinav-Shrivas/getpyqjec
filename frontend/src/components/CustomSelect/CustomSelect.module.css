@@ -9,6 +9,7 @@
 
 .trigger {
   width: 100%;
+  box-sizing: border-box;
   padding: 12px 14px;
   background: rgba(14, 12, 22, 0.70);
   border: 1px solid rgba(180, 160, 220, 0.22);

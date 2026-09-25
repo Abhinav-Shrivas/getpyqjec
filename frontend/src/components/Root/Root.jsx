@@ -22,6 +22,9 @@ export default function RootLayout() {
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
+          width: "100%",
+          maxWidth: "100vw",
+          overflowX: "hidden",
         }}
       >
         <NavBar />
@@ -31,6 +34,9 @@ export default function RootLayout() {
             display: "flex",
             flexDirection: "column",
             minHeight: "calc(100vh - 58px)",
+            width: "100%",
+            maxWidth: "100%",
+            minWidth: 0,
           }}
         >
           <Outlet />
