@@ -10,8 +10,14 @@ from io import BytesIO
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.core.mail import send_mail
 from django.db import transaction
+from utils.email_service import (
+    send_password_reset_email,
+    send_verification_approved_email,
+    send_verification_rejected_email,
+    send_subject_approved_email,
+    send_subject_rejected_email,
+)
 from django.http import FileResponse, JsonResponse
 from django.shortcuts import render
 from django.template.exceptions import TemplateDoesNotExist
@@ -725,25 +731,16 @@ class RequestPasswordResetView(APIView):
         reset_link = f"{frontend_base}/reset-password/{uid}/{token}"
 
         try:
-            send_mail(
-                subject="Reset your GetPYQ password",
-                message=(
-                    f"Hello {user.name},\n\n"
-                    f"We received a request to reset your password for your GetPYQ account.\n\n"
-                    f"Click the link below to reset your password:\n{reset_link}\n\n"
-                    f"Note: This link is valid for 5 minutes only.\n\n"
-                    f"If you did not request this, you can safely ignore this email.\n\n"
-                    f"— GetPYQ JEC Team"
-                ),
-                from_email=None,
-                recipient_list=[user.email],
-                fail_silently=False,
+            send_password_reset_email(
+                user_name=user.name,
+                user_email=user.email,
+                reset_link=reset_link,
             )
             logger.info(f"Password reset email sent to {user.email}")
         except Exception as e:
-            logger.error(f"Failed to send password reset email to {user.email}: {e}", exc_info=True)
+            logger.error(f"Failed to send password reset email to {user.email}: {e.__class__.__name__}")
             return Response(
-                {"error": f"Failed to send password reset email: {str(e)}"},
+                {"error": "Failed to send password reset email. Please try again later."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -1068,27 +1065,12 @@ class VerificationApproveView(APIView):
 
         # Notify student via email
         frontend_base = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
-        try:
-            send_mail(
-                subject="Student ID Verification Approved | GetPYQ JEC",
-                message=(
-                    f"Hello {verification.user.name},\n\n"
-                    f"Congratulations! Your student ID verification (Roll No: {verification.user.rno}) "
-                    f"has been approved by the admin team.\n\n"
-                    f"Your account is now verified. You have full access to contribute and upload "
-                    f"previous-year question papers (PYQs) to GetPYQ JEC.\n\n"
-                    f"Start uploading here:\n"
-                    f"{frontend_base}/upload\n\n"
-                    f"Thank you for helping the student community!\n\n"
-                    f"— GetPYQ JEC Team"
-                ),
-                from_email=None,
-                recipient_list=[verification.user.email],
-                fail_silently=True,
-            )
-            logger.info(f"Verification approval email sent to {verification.user.email}")
-        except Exception as e:
-            logger.error(f"Failed to send verification approval email to {verification.user.email}: {e}")
+        send_verification_approved_email(
+            user_name=verification.user.name,
+            user_email=verification.user.email,
+            rno=verification.user.rno,
+            frontend_base=frontend_base,
+        )
 
         return Response({
             'message': f'Verification approved for {verification.user.rno}.',
@@ -1137,26 +1119,13 @@ class VerificationRejectView(APIView):
 
         # Notify student via email
         frontend_base = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
-        try:
-            send_mail(
-                subject="Student ID Verification Update | GetPYQ JEC",
-                message=(
-                    f"Hello {verification.user.name},\n\n"
-                    f"Your student ID verification submission (Roll No: {verification.user.rno}) "
-                    f"was reviewed by the admin team and could not be approved.\n\n"
-                    f"Reason for rejection:\n"
-                    f"{reason}\n\n"
-                    f"You can review your status and resubmit a clearer photo of your college ID card here:\n"
-                    f"{frontend_base}/verify\n\n"
-                    f"— GetPYQ JEC Team"
-                ),
-                from_email=None,
-                recipient_list=[verification.user.email],
-                fail_silently=True,
-            )
-            logger.info(f"Verification rejection email sent to {verification.user.email}")
-        except Exception as e:
-            logger.error(f"Failed to send verification rejection email to {verification.user.email}: {e}")
+        send_verification_rejected_email(
+            user_name=verification.user.name,
+            user_email=verification.user.email,
+            rno=verification.user.rno,
+            reason=reason,
+            frontend_base=frontend_base,
+        )
 
         return Response({
             'message': f'Verification rejected for {verification.user.rno}.',
@@ -1456,24 +1425,14 @@ class AdminSubjectRequestApproveView(APIView):
             )
 
         # Notify the student via email
-        try:
-            send_mail(
-                subject=f"Subject Approved: {subject_req.code} - {subject_req.name} | GetPYQ JEC",
-                message=(
-                    f"Hello {subject_req.user.name},\n\n"
-                    f"Good news! Your request to add the subject '{subject_req.code} - {subject_req.name}' "
-                    f"for {subject_req.branch}, Semester {subject_req.semester} has been approved by the admin team.\n\n"
-                    f"This subject is now available under 'Past / Previously Taught Subjects' in the subject dropdown. "
-                    f"You can now upload question papers for this subject on GetPYQ JEC.\n\n"
-                    f"Thank you for helping keep GetPYQ comprehensive!\n\n"
-                    f"— GetPYQ JEC Team"
-                ),
-                from_email=None,
-                recipient_list=[subject_req.user.email],
-                fail_silently=True,
-            )
-        except Exception as e:
-            logger.error(f"Failed to send subject approval email to {subject_req.user.email}: {e}")
+        send_subject_approved_email(
+            user_name=subject_req.user.name,
+            user_email=subject_req.user.email,
+            code=subject_req.code,
+            name=subject_req.name,
+            branch=subject_req.branch,
+            semester=subject_req.semester,
+        )
 
         return Response({
             "message": f"Subject '{subject_req.code} - {subject_req.name}' approved and added to curriculum.",
@@ -1525,23 +1484,15 @@ class AdminSubjectRequestRejectView(APIView):
             )
 
         # Notify the student via email
-        try:
-            send_mail(
-                subject=f"Subject Request Update: {subject_req.code} | GetPYQ JEC",
-                message=(
-                    f"Hello {subject_req.user.name},\n\n"
-                    f"Your request to add the subject '{subject_req.code} - {subject_req.name}' "
-                    f"for {subject_req.branch}, Semester {subject_req.semester} was reviewed and not approved.\n\n"
-                    f"Reason for rejection:\n{reason}\n\n"
-                    f"If you have additional details or syllabus proof, please feel free to submit a revised request.\n\n"
-                    f"— GetPYQ JEC Team"
-                ),
-                from_email=None,
-                recipient_list=[subject_req.user.email],
-                fail_silently=True,
-            )
-        except Exception as e:
-            logger.error(f"Failed to send subject rejection email to {subject_req.user.email}: {e}")
+        send_subject_rejected_email(
+            user_name=subject_req.user.name,
+            user_email=subject_req.user.email,
+            code=subject_req.code,
+            name=subject_req.name,
+            branch=subject_req.branch,
+            semester=subject_req.semester,
+            reason=reason,
+        )
 
         return Response({
             "message": f"Subject request for '{subject_req.code}' was rejected.",

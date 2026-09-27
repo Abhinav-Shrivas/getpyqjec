@@ -12,9 +12,9 @@ services:
         sync: false
       - key: FRONTEND_BASE_URL
         sync: false
-      - key: EMAIL_HOST_USER
+      - key: RESEND_API_KEY
         sync: false
-      - key: EMAIL_HOST_PASSWORD
+      - key: DEFAULT_FROM_EMAIL
         sync: false
       # Cloudflare R2
       - key: R2_ACCOUNT_ID

@@ -1,11 +1,11 @@
 import io
 from unittest.mock import MagicMock, patch
 
+import resend
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
@@ -16,6 +16,15 @@ import pikepdf
 from PIL import Image
 
 from core.models import PYQ, StudentVerification, Subject, SubjectRequest
+from utils.email_service import (
+    EmailServiceError,
+    send_email,
+    send_password_reset_email,
+    send_verification_approved_email,
+    send_verification_rejected_email,
+    send_subject_approved_email,
+    send_subject_rejected_email,
+)
 from utils.pdf import compile_pdfs_from_buffers
 from utils.r2_storage import R2NoSuchKeyError, R2StorageError
 
@@ -128,29 +137,35 @@ class AuthTests(TestCase):
         cookie = res.cookies.get("refresh_token")
         self.assertTrue(cookie is not None)
 
-    def test_forgot_and_reset_password_flow(self):
-        # 1. Request reset link
-        res = self.client.post("/auth/forgot-password/", {"email": self.valid_email}, format="json")
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("Reset your GetPYQ password", mail.outbox[0].subject)
+    @patch("resend.Emails.send")
+    def test_forgot_and_reset_password_flow(self, mock_resend_send):
+        mock_resend_send.return_value = {"id": "re_pwd_reset_123"}
+        with self.settings(RESEND_API_KEY="re_test_key_123"):
+            # 1. Request reset link
+            res = self.client.post("/auth/forgot-password/", {"email": self.valid_email}, format="json")
+            self.assertEqual(res.status_code, 200)
+            mock_resend_send.assert_called_once()
+            call_params = mock_resend_send.call_args[0][0]
+            self.assertIn("Reset your GetPYQ password", call_params["subject"])
+            self.assertEqual(call_params["to"], [self.valid_email])
+            self.assertIn("/reset-password/", call_params["text"])
 
-        # 2. Reset password with generated token
-        token_gen = PasswordResetTokenGenerator()
-        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
-        token = token_gen.make_token(self.user)
+            # 2. Reset password with generated token
+            token_gen = PasswordResetTokenGenerator()
+            uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+            token = token_gen.make_token(self.user)
 
-        res_reset = self.client.post(f"/auth/reset-password/{uid}/{token}/", {
-            "password": "newsecretpassword123",
-        }, format="json")
-        self.assertEqual(res_reset.status_code, 200)
+            res_reset = self.client.post(f"/auth/reset-password/{uid}/{token}/", {
+                "password": "newsecretpassword123",
+            }, format="json")
+            self.assertEqual(res_reset.status_code, 200)
 
-        # 3. Verify user can login with new password
-        login_res = self.client.post("/auth/login/", {
-            "rno": self.valid_rno,
-            "password": "newsecretpassword123",
-        }, format="json")
-        self.assertEqual(login_res.status_code, 200)
+            # 3. Verify user can login with new password
+            login_res = self.client.post("/auth/login/", {
+                "rno": self.valid_rno,
+                "password": "newsecretpassword123",
+            }, format="json")
+            self.assertEqual(login_res.status_code, 200)
 
 
 class UploadTests(TestCase):
@@ -898,40 +913,329 @@ class VerificationEmailNotificationTests(TestCase):
             status="pending",
         )
 
-    def test_approve_verification_sends_email(self):
-        self.client.force_authenticate(user=self.admin)
-        mail.outbox = []
-        res = self.client.post(f"/admin-api/verifications/{self.verification.id}/approve/")
-        self.assertEqual(res.status_code, 200)
-        self.verification.refresh_from_db()
-        self.assertEqual(self.verification.status, "verified")
+    @patch("resend.Emails.send")
+    def test_approve_verification_sends_email(self, mock_resend_send):
+        mock_resend_send.return_value = {"id": "re_verify_appr_123"}
+        with self.settings(RESEND_API_KEY="re_test_key_123"):
+            self.client.force_authenticate(user=self.admin)
+            res = self.client.post(f"/admin-api/verifications/{self.verification.id}/approve/")
+            self.assertEqual(res.status_code, 200)
+            self.verification.refresh_from_db()
+            self.assertEqual(self.verification.status, "verified")
 
-        # Verify email was sent
-        self.assertEqual(len(mail.outbox), 1)
-        sent_mail = mail.outbox[0]
-        self.assertIn("Student ID Verification Approved", sent_mail.subject)
-        self.assertIn(self.user.email, sent_mail.to)
-        self.assertIn(self.user.name, sent_mail.body)
-        self.assertIn("/upload", sent_mail.body)
+            # Verify email was sent via Resend API
+            mock_resend_send.assert_called_once()
+            call_params = mock_resend_send.call_args[0][0]
+            self.assertIn("Student ID Verification Approved", call_params["subject"])
+            self.assertEqual(call_params["to"], [self.user.email])
+            self.assertIn(self.user.name, call_params["text"])
+            self.assertIn("/upload", call_params["text"])
 
-    def test_reject_verification_sends_email(self):
-        self.client.force_authenticate(user=self.admin)
-        mail.outbox = []
-        res = self.client.post(
-            f"/admin-api/verifications/{self.verification.id}/reject/",
-            {"reason": "ID card photo is blurry. Please upload a clear scan."},
+    @patch("resend.Emails.send")
+    def test_reject_verification_sends_email(self, mock_resend_send):
+        mock_resend_send.return_value = {"id": "re_verify_rej_123"}
+        with self.settings(RESEND_API_KEY="re_test_key_123"):
+            self.client.force_authenticate(user=self.admin)
+            res = self.client.post(
+                f"/admin-api/verifications/{self.verification.id}/reject/",
+                {"reason": "ID card photo is blurry. Please upload a clear scan."},
+            )
+            self.assertEqual(res.status_code, 200)
+            self.verification.refresh_from_db()
+            self.assertEqual(self.verification.status, "rejected")
+
+            # Verify email was sent via Resend API
+            mock_resend_send.assert_called_once()
+            call_params = mock_resend_send.call_args[0][0]
+            self.assertIn("Student ID Verification Update", call_params["subject"])
+            self.assertEqual(call_params["to"], [self.user.email])
+            self.assertIn("ID card photo is blurry", call_params["text"])
+            self.assertIn("/verify", call_params["text"])
+
+
+class EmailServiceTests(TestCase):
+    """
+    Comprehensive tests for utils.email_service and Resend API transactional emails.
+    """
+
+    @patch("resend.Emails.send")
+    def test_send_email_success(self, mock_send):
+        mock_send.return_value = {"id": "msg_abc123"}
+        with self.settings(
+            RESEND_API_KEY="re_test_key_mock",
+            DEFAULT_FROM_EMAIL="GetPYQ <onboarding@resend.dev>",
+        ):
+            resp = send_email(
+                to="student@example.com",
+                subject="Test Subject",
+                text="Test Body Message",
+            )
+            self.assertEqual(resp, {"id": "msg_abc123"})
+            mock_send.assert_called_once_with({
+                "from": "GetPYQ <onboarding@resend.dev>",
+                "to": ["student@example.com"],
+                "subject": "Test Subject",
+                "text": "Test Body Message",
+            })
+
+    @patch("resend.Emails.send")
+    def test_send_email_with_html_and_reply_to_and_custom_sender(self, mock_send):
+        mock_send.return_value = {"id": "msg_custom456"}
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            resp = send_email(
+                to=["student1@example.com", "student2@example.com"],
+                subject="Notice",
+                text="Plain notice",
+                html="<p>Plain notice</p>",
+                from_email="Admin <admin@mycollege.edu>",
+                reply_to="support@mycollege.edu",
+            )
+            self.assertEqual(resp, {"id": "msg_custom456"})
+            mock_send.assert_called_once_with({
+                "from": "Admin <admin@mycollege.edu>",
+                "to": ["student1@example.com", "student2@example.com"],
+                "subject": "Notice",
+                "text": "Plain notice",
+                "html": "<p>Plain notice</p>",
+                "reply_to": ["support@mycollege.edu"],
+            })
+
+    def test_send_email_missing_api_key_raises_error(self):
+        with self.settings(RESEND_API_KEY=""):
+            with self.assertRaises(EmailServiceError) as ctx:
+                send_email(
+                    to="student@example.com",
+                    subject="Test Subject",
+                    text="Test Body",
+                    fail_silently=False,
+                )
+            self.assertIn("Resend API key is not configured", str(ctx.exception))
+
+    def test_send_email_missing_api_key_fail_silently(self):
+        with self.settings(RESEND_API_KEY=""):
+            result = send_email(
+                to="student@example.com",
+                subject="Test Subject",
+                text="Test Body",
+                fail_silently=True,
+            )
+            self.assertIsNone(result)
+
+    @patch("resend.Emails.send")
+    def test_send_email_resend_api_exception_raises_error(self, mock_send):
+        mock_send.side_effect = Exception("Internal API timeout from Resend")
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            with self.assertRaises(EmailServiceError) as ctx:
+                send_email(
+                    to="student@example.com",
+                    subject="Test Subject",
+                    text="Test Body",
+                    fail_silently=False,
+                )
+            # Ensure internal message details are sanitized and do not expose sensitive API tokens
+            self.assertIn("Failed to deliver email via Resend", str(ctx.exception))
+
+    @patch("resend.Emails.send")
+    def test_send_email_resend_api_exception_fail_silently(self, mock_send):
+        mock_send.side_effect = Exception("Internal API timeout from Resend")
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            result = send_email(
+                to="student@example.com",
+                subject="Test Subject",
+                text="Test Body",
+                fail_silently=True,
+            )
+            self.assertIsNone(result)
+
+    @patch("resend.Emails.send")
+    def test_send_password_reset_email_helper(self, mock_send):
+        mock_send.return_value = {"id": "re_helper_reset"}
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            resp = send_password_reset_email(
+                user_name="John Doe",
+                user_email="john@example.com",
+                reset_link="https://getpyq.com/reset/xyz",
+            )
+            self.assertEqual(resp, {"id": "re_helper_reset"})
+            mock_send.assert_called_once()
+            params = mock_send.call_args[0][0]
+            self.assertEqual(params["to"], ["john@example.com"])
+            self.assertEqual(params["subject"], "Reset your GetPYQ password")
+            self.assertIn("Hello John Doe", params["text"])
+            self.assertIn("https://getpyq.com/reset/xyz", params["text"])
+            self.assertIn("valid for 5 minutes only", params["text"])
+
+    @patch("resend.Emails.send")
+    def test_send_verification_approved_email_helper(self, mock_send):
+        mock_send.return_value = {"id": "re_helper_approved"}
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            resp = send_verification_approved_email(
+                user_name="Alice",
+                user_email="alice@example.com",
+                rno="0201CS221001",
+                frontend_base="https://getpyq.com",
+            )
+            self.assertEqual(resp, {"id": "re_helper_approved"})
+            mock_send.assert_called_once()
+            params = mock_send.call_args[0][0]
+            self.assertEqual(params["to"], ["alice@example.com"])
+            self.assertIn("Student ID Verification Approved", params["subject"])
+            self.assertIn("0201CS221001", params["text"])
+            self.assertIn("https://getpyq.com/upload", params["text"])
+
+    @patch("resend.Emails.send")
+    def test_send_verification_rejected_email_helper(self, mock_send):
+        mock_send.return_value = {"id": "re_helper_rejected"}
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            resp = send_verification_rejected_email(
+                user_name="Bob",
+                user_email="bob@example.com",
+                rno="0201ME221002",
+                reason="ID card expired.",
+                frontend_base="https://getpyq.com",
+            )
+            self.assertEqual(resp, {"id": "re_helper_rejected"})
+            mock_send.assert_called_once()
+            params = mock_send.call_args[0][0]
+            self.assertEqual(params["to"], ["bob@example.com"])
+            self.assertIn("Student ID Verification Update", params["subject"])
+            self.assertIn("0201ME221002", params["text"])
+            self.assertIn("ID card expired.", params["text"])
+            self.assertIn("https://getpyq.com/verify", params["text"])
+
+    @patch("resend.Emails.send")
+    def test_send_subject_approved_email_helper(self, mock_send):
+        mock_send.return_value = {"id": "re_helper_subj_appr"}
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            resp = send_subject_approved_email(
+                user_name="Charlie",
+                user_email="charlie@example.com",
+                code="CS601",
+                name="Network Security",
+                branch="CSE",
+                semester=6,
+            )
+            self.assertEqual(resp, {"id": "re_helper_subj_appr"})
+            mock_send.assert_called_once()
+            params = mock_send.call_args[0][0]
+            self.assertEqual(params["to"], ["charlie@example.com"])
+            self.assertIn("Subject Approved: CS601 - Network Security", params["subject"])
+            self.assertIn("CSE, Semester 6", params["text"])
+
+    @patch("resend.Emails.send")
+    def test_send_subject_rejected_email_helper(self, mock_send):
+        mock_send.return_value = {"id": "re_helper_subj_rej"}
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            resp = send_subject_rejected_email(
+                user_name="Dave",
+                user_email="dave@example.com",
+                code="EE501",
+                name="Power Systems",
+                branch="EE",
+                semester=5,
+                reason="Duplicate subject already exists under EE502.",
+            )
+            self.assertEqual(resp, {"id": "re_helper_subj_rej"})
+            mock_send.assert_called_once()
+            params = mock_send.call_args[0][0]
+            self.assertEqual(params["to"], ["dave@example.com"])
+            self.assertIn("Subject Request Update: EE501", params["subject"])
+            self.assertIn("Duplicate subject already exists", params["text"])
+
+    @patch("resend.Emails.send")
+    def test_forgot_password_view_handles_resend_failure_gracefully(self, mock_send):
+        mock_send.side_effect = Exception("Resend API 429 Too Many Requests")
+        client = APIClient()
+        user = User.objects.create_user(
+            rno="0201IT231088",
+            email="failuser@gmail.com",
+            name="Fail User",
+            password="testpassword123",
         )
-        self.assertEqual(res.status_code, 200)
-        self.verification.refresh_from_db()
-        self.assertEqual(self.verification.status, "rejected")
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            res = client.post("/auth/forgot-password/", {"email": user.email}, format="json")
+            self.assertEqual(res.status_code, 500)
+            self.assertEqual(
+                res.json(),
+                {"error": "Failed to send password reset email. Please try again later."},
+            )
 
-        # Verify email was sent
-        self.assertEqual(len(mail.outbox), 1)
-        sent_mail = mail.outbox[0]
-        self.assertIn("Student ID Verification Update", sent_mail.subject)
-        self.assertIn(self.user.email, sent_mail.to)
-        self.assertIn("ID card photo is blurry", sent_mail.body)
-        self.assertIn("/verify", sent_mail.body)
+    @patch("resend.Emails.send")
+    def test_admin_subject_request_approve_sends_email(self, mock_send):
+        mock_send.return_value = {"id": "re_subj_appr_view"}
+        admin = User.objects.create_superuser(
+            rno="0201IT201099",
+            name="Admin Subject",
+            email="admin_subj@jecjabalpur.ac.in",
+            password="StrongPassword123!",
+        )
+        student = User.objects.create_user(
+            rno="0201CS231010",
+            email="student_req@gmail.com",
+            name="Requesting Student",
+            password="password123",
+        )
+        subj_req = SubjectRequest.objects.create(
+            user=student,
+            branch="CS",
+            semester=5,
+            code="CS509",
+            name="Advanced Algorithms",
+            status="pending",
+        )
+        client = APIClient()
+        client.force_authenticate(user=admin)
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            res = client.post(f"/admin-api/subject-requests/{subj_req.id}/approve/")
+            self.assertEqual(res.status_code, 200)
+            subj_req.refresh_from_db()
+            self.assertEqual(subj_req.status, "approved")
+
+            mock_send.assert_called_once()
+            params = mock_send.call_args[0][0]
+            self.assertEqual(params["to"], [student.email])
+            self.assertIn("Subject Approved: CS509 - Advanced Algorithms", params["subject"])
+
+    @patch("resend.Emails.send")
+    def test_admin_subject_request_reject_sends_email(self, mock_send):
+        mock_send.return_value = {"id": "re_subj_rej_view"}
+        admin = User.objects.create_superuser(
+            rno="0201IT201098",
+            name="Admin Subject 2",
+            email="admin_subj2@jecjabalpur.ac.in",
+            password="StrongPassword123!",
+        )
+        student = User.objects.create_user(
+            rno="0201CS231011",
+            email="student_req2@gmail.com",
+            name="Requesting Student 2",
+            password="password123",
+        )
+        subj_req = SubjectRequest.objects.create(
+            user=student,
+            branch="CS",
+            semester=5,
+            code="CS510",
+            name="Quantum Computing",
+            status="pending",
+        )
+        client = APIClient()
+        client.force_authenticate(user=admin)
+        with self.settings(RESEND_API_KEY="re_test_key_mock"):
+            res = client.post(
+                f"/admin-api/subject-requests/{subj_req.id}/reject/",
+                {"reason": "Not approved in current AICTE syllabus."},
+            )
+            self.assertEqual(res.status_code, 200)
+            subj_req.refresh_from_db()
+            self.assertEqual(subj_req.status, "rejected")
+
+            mock_send.assert_called_once()
+            params = mock_send.call_args[0][0]
+            self.assertEqual(params["to"], [student.email])
+            self.assertIn("Subject Request Update: CS510", params["subject"])
+            self.assertIn("Not approved in current AICTE syllabus", params["text"])
+
 
 
 
