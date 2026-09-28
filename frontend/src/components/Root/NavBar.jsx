@@ -1,20 +1,30 @@
 import classes from "./NavBar.module.css";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 
 export default function NavBar() {
   const { isLoggedIn, user, logout, isAdmin } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   async function handleLogout() {
     await logout();
     navigate("/");
   }
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 8);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!showDropdown) return;
@@ -30,7 +40,8 @@ export default function NavBar() {
   const vStatus = user?.verification_status || "unverified";
 
   return (
-    <nav className={classes.navbar}>
+    <header className={`${classes.headerWrapper} ${isScrolled ? classes.headerScrolled : ""}`}>
+      <nav className={`${classes.navbar} ${isScrolled ? classes.scrolled : ""}`}>
       <NavLink to="/" className={classes["download-link"]}>
         <div className={classes["logo-group"]}>
           <div className={classes["logo-badge"]}>
@@ -255,5 +266,6 @@ export default function NavBar() {
         )}
       </div>
     </nav>
+  </header>
   );
 }

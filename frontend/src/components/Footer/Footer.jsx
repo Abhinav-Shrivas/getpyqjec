@@ -130,7 +130,7 @@ export default function Footer() {
           {/* 4. Bottom Bar (Sub-Footer) */}
           <div className={classes.bottomBar}>
             <p className={classes.copyrightText}>
-              &copy; 2026 GETPYQ JEC. An independent student community initiative.
+              &copy; 2026 GETPYQJEC. An independent student community initiative.
             </p>
             <p className={classes.disclaimerText}>
               Not officially affiliated with Jabalpur Engineering College administration.

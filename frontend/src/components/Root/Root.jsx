@@ -25,8 +25,7 @@ export default function RootLayout() {
           display: "flex",
           flexDirection: "column",
           width: "100%",
-          maxWidth: "100vw",
-          overflowX: "hidden",
+          maxWidth: "100%",
         }}
       >
         <NavBar />
