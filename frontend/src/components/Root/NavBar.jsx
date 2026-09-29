@@ -18,12 +18,32 @@ export default function NavBar() {
   }
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 8);
+    let ticking = false;
+    let lastState = false;
+
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          const scrollY = window.scrollY || window.pageYOffset || 0;
+          // Hysteresis threshold prevents jitter and rapid toggling on mobile rubber-banding
+          const nextState = scrollY > (lastState ? 8 : 20);
+
+          if (nextState !== lastState) {
+            lastState = nextState;
+            setIsScrolled(nextState);
+          }
+          ticking = false;
+        });
+      }
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [location.pathname]);
 
   useEffect(() => {
