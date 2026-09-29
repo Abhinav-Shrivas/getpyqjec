@@ -6,6 +6,14 @@ export default defineConfig({
   plugins: [react()],
   envDir: "../",  // load .env from project root
   base: "/",
+  server: {
+    proxy: {
+      '/media': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: "dist",
     assetsDir: "",

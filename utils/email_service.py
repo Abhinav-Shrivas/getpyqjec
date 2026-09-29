@@ -6,6 +6,7 @@ Replaces previous SMTP-based EmailBackend transport.
 """
 
 import logging
+import sys
 from typing import Any, Dict, List, Optional, Union
 
 from django.conf import settings
@@ -40,8 +41,29 @@ def send_email(
     :param fail_silently: When True, suppresses exceptions and returns None on failure.
     :return: Resend API response dictionary, or None if failed silently.
     """
-    api_key = getattr(settings, "RESEND_API_KEY", "") or ""
+    is_testing = "test" in sys.argv
+    force_local = getattr(settings, "FORCE_LOCAL_STORAGE", False) and not is_testing
+    api_key = "" if force_local else (getattr(settings, "RESEND_API_KEY", "") or "").strip()
     if not api_key:
+        # In local development, print email to terminal so contributors can test without Resend API keys
+        if getattr(settings, "DEBUG", False) and not is_testing:
+            sender = from_email or getattr(
+                settings, "DEFAULT_FROM_EMAIL", "GetPYQ <onboarding@resend.dev>"
+            )
+            recipients = [to] if isinstance(to, str) else list(to)
+            print(
+                "\n"
+                + "=" * 60 + "\n"
+                + ">>> [LOCAL DEV EMAIL - CONSOLE OUTPUT]\n"
+                + f"From:    {sender}\n"
+                + f"To:      {', '.join(recipients)}\n"
+                + f"Subject: {subject}\n"
+                + "-" * 60 + "\n"
+                + f"{text}\n"
+                + "=" * 60 + "\n"
+            )
+            return {"id": "mock-local-email", "from": sender, "to": recipients}
+
         err_msg = "Resend API key is not configured (RESEND_API_KEY is missing or empty)."
         logger.error(err_msg)
         if fail_silently:
@@ -109,7 +131,7 @@ def send_password_reset_email(
         f"Click the link below to reset your password:\n{reset_link}\n\n"
         f"Note: This link is valid for 5 minutes only.\n\n"
         f"If you did not request this, you can safely ignore this email.\n\n"
-        f"— GetPYQ JEC Team"
+        f"-- GetPYQ JEC Team"
     )
     return send_email(
         to=user_email,
@@ -138,7 +160,7 @@ def send_verification_approved_email(
         f"Start uploading here:\n"
         f"{frontend_base}/upload\n\n"
         f"Thank you for helping the student community!\n\n"
-        f"— GetPYQ JEC Team"
+        f"-- GetPYQ JEC Team"
     )
     return send_email(
         to=user_email,
@@ -167,7 +189,7 @@ def send_verification_rejected_email(
         f"{reason}\n\n"
         f"You can review your status and resubmit a clearer photo of your college ID card here:\n"
         f"{frontend_base}/verify\n\n"
-        f"— GetPYQ JEC Team"
+        f"-- GetPYQ JEC Team"
     )
     return send_email(
         to=user_email,
@@ -196,7 +218,7 @@ def send_subject_approved_email(
         f"This subject is now available under 'Past / Previously Taught Subjects' in the subject dropdown. "
         f"You can now upload question papers for this subject on GetPYQ JEC.\n\n"
         f"Thank you for helping keep GetPYQ comprehensive!\n\n"
-        f"— GetPYQ JEC Team"
+        f"-- GetPYQ JEC Team"
     )
     return send_email(
         to=user_email,
@@ -225,7 +247,7 @@ def send_subject_rejected_email(
         f"for {branch}, Semester {semester} was reviewed and not approved.\n\n"
         f"Reason for rejection:\n{reason}\n\n"
         f"If you have additional details or syllabus proof, please feel free to submit a revised request.\n\n"
-        f"— GetPYQ JEC Team"
+        f"-- GetPYQ JEC Team"
     )
     return send_email(
         to=user_email,

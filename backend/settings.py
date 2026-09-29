@@ -22,6 +22,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / '.env', override=True)
 
+# ==============================================================================
+# Contributor Mode / Local Development Overrides
+# ==============================================================================
+# Setting CONTRIBUTOR_MODE=True forces:
+#   1. Local SQLite database (ignores remote NeonDB DATABASE_URL)
+#   2. Local disk file storage under ./media/ (ignores Cloudflare R2 credentials)
+#   3. Local terminal console email output (ignores Resend API key)
+CONTRIBUTOR_MODE = os.environ.get('CONTRIBUTOR_MODE', 'False').lower() in ('true', '1')
+FORCE_LOCAL_STORAGE = CONTRIBUTOR_MODE or os.environ.get('FORCE_LOCAL_STORAGE', 'False').lower() in ('true', '1')
+FORCE_LOCAL_DB = CONTRIBUTOR_MODE or os.environ.get('FORCE_LOCAL_DB', 'False').lower() in ('true', '1')
+
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -115,7 +127,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 # NeonDB PostgreSQL in production via DATABASE_URL; fallback to SQLite for local development
 db_url = os.environ.get('DATABASE_URL')
-if 'test' in sys.argv or not db_url or db_url.strip() == '':
+if FORCE_LOCAL_DB or 'test' in sys.argv or not db_url or db_url.strip() == '':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -186,6 +198,9 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [FRONTEND_DIST_DIR] if FRONTEND_DIST_DIR.exists() else []
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / "media"
+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -196,7 +211,10 @@ STORAGES = {
 }
 
 # Frontend & CORS Configuration
-FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'https://www.getpyqjec.in').rstrip('/')
+_default_frontend = 'http://localhost:5173' if (DEBUG or CONTRIBUTOR_MODE) else 'https://www.getpyqjec.in'
+FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', '').rstrip('/')
+if not FRONTEND_BASE_URL or (CONTRIBUTOR_MODE and 'getpyqjec.in' in FRONTEND_BASE_URL):
+    FRONTEND_BASE_URL = _default_frontend
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
@@ -272,3 +290,4 @@ R2_PRESIGNED_URL_EXPIRY = int(os.environ.get('R2_PRESIGNED_URL_EXPIRY', '3600'))
 # ==============================================================================
 VERIFICATION_MAX_IMAGE_SIZE_MB = int(os.environ.get('VERIFICATION_MAX_IMAGE_SIZE_MB', '2'))
 VERIFICATION_ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png']
+

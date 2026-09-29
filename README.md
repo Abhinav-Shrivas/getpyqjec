@@ -1,7 +1,7 @@
 <div align="center">
   <h1>🎓 GetPYQJEC</h1>
-  <p><strong>A Next-Generation Academic Resource Platform</strong></p>
-  <p>Providing seamless, systematic, and intuitive access to Previous Year Questions (PYQs) for college students.</p>
+  <p><strong>The Community-Driven Academic Archive for JEC Students</strong></p>
+  <p>Built by students, for students — an open platform to download custom PDF bundles and contribute verified question papers across all engineering branches.</p>
 
   <p>
     <img src="https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React 19" />
@@ -103,16 +103,43 @@
 
 ## 🚀 Local Setup Guide
 
-### Prerequisites
+You can run GetPYQ JEC locally using either **Docker (recommended for instant 1-command setup)** or manual setup.
+
+> [!TIP]
+> **Zero Cloud Keys Required for Local Development!**  
+> The application automatically falls back to local SQLite (`db.sqlite3`), local disk file storage (`media/`), and console email output. You don't need Cloudflare R2, NeonDB, or Resend credentials to contribute!
+
+---
+
+### Option A: One-Command Quickstart (Docker — Recommended)
+
+With [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed, run:
+
+```bash
+docker compose up --build
+```
+
+* **Frontend**: [http://localhost:5173](http://localhost:5173) (Vite with hot-module reload)
+* **Backend API**: [http://localhost:8000](http://localhost:8000) (Django with auto-reload)
+* **Admin Panel**: [http://localhost:8000/admin](http://localhost:8000/admin)
+
+To populate the database with sample users and papers, open a second terminal and run:
+```bash
+docker compose exec backend python manage.py seed_dev_data
+```
+
+---
+
+### Option B: Manual Setup (Python + Node.js)
+
+#### Prerequisites
 * [Python 3.10+](https://www.python.org/downloads/)
 * [Node.js 18+](https://nodejs.org/) & npm
 * [Git](https://git-scm.com/)
 
----
+#### 1. Backend Setup (Django)
 
-### Backend Setup (Django)
-
-1. **Clone and enter the workspace**
+1. **Clone the repository**
    ```bash
    git clone https://github.com/hardikgaikwad/getpyqjec.git
    cd getpyqjec
@@ -136,25 +163,18 @@
    ```
 
 4. **Set up Environment Variables**
-   Copy the provided `.env.example` template to `.env`:
-   * Windows:
-     ```powershell
-     copy .env.example .env
-     ```
-   * macOS / Linux:
-     ```bash
-     cp .env.example .env
-     ```
-   *(Fill in your Cloudflare R2 bucket credentials and Django secret key.)*
+   Copy `.env.example` to `.env` (no cloud keys needed for local dev):
+   * Windows: `copy .env.example .env`
+   * macOS / Linux: `cp .env.example .env`
 
 5. **Apply database migrations**
    ```bash
    python manage.py migrate
    ```
 
-6. **Create an administrator account**
+6. **Seed sample data (Users, subjects & sample PDF papers)**
    ```bash
-   python manage.py createsuperuser
+   python manage.py seed_dev_data
    ```
 
 7. **Run the development server**
@@ -163,25 +183,43 @@
    ```
    *Backend running at `http://127.0.0.1:8000/`*
 
+#### 2. Frontend Setup (React)
+
+In a separate terminal:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+*Frontend running at `http://localhost:5173/`*
+
 ---
 
-### Frontend Setup (React)
+## 👥 Seed Accounts for Testing
 
-1. **Navigate to the frontend directory**
-   ```bash
-   cd frontend
-   ```
+Running `python manage.py seed_dev_data` provides ready-to-use credentials:
 
-2. **Install Node dependencies**
-   ```bash
-   npm install
-   ```
+| Role | Email | Password | Status |
+| :--- | :--- | :--- | :--- |
+| **Admin** | `admin@jecjabalpur.ac.in` | `admin123` | Verified (Access to `/admin` & moderation) |
+| **Student** | `student@jecjabalpur.ac.in` | `student123` | Verified (Can upload PYQs) |
+| **Pending Student** | `pending@jecjabalpur.ac.in` | `student123` | Pending Review (For admin verification testing) |
 
-3. **Start the Vite development server**
-   ```bash
-   npm run dev
-   ```
-   *Frontend running at `http://localhost:5173/`*
+---
+
+## 🤝 Contributing
+
+We welcome contributions from everyone! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) guide for details on:
+* Setting up your development environment
+* Git workflow & branch naming conventions
+* Running automated test suites (`python manage.py test core`)
+* Opening Pull Requests
+
+---
+
+## 📄 License
+
+This project is licensed under the terms of the [MIT License](LICENSE).
 
 ---
 
@@ -191,17 +229,21 @@
 getpyqjec/
 ├── backend/               # Django project settings, WSGI, and root routing
 ├── core/                  # Main DRF app: models, views, serializers, tests, migrations
+│   └── management/        # Custom management commands (seed_dev_data)
 ├── frontend/              # React single-page application
 │   ├── src/               # React components, CustomSelect, AuthContext, HTTP layer
 │   │   ├── components/    # DownloadPage, UploadPage, VerificationPage, CustomSelect, etc.
 │   │   ├── store/         # Global authentication and verification state
 │   │   └── http.js        # Centralized API fetch methods
 │   └── package.json       # Frontend scripts and dependencies
-├── utils/                 # Utilities: Cloudflare R2 storage client and pikepdf compiler
+├── utils/                 # Utilities: Cloudflare R2 / Local storage and email services
 ├── templates/             # Custom HTML templates and admin overrides
 ├── Dockerfile             # Production container image definition
+├── docker-compose.yml     # Local one-command development environment
 ├── render.yaml            # Render deployment blueprint
 ├── requirements.txt       # Backend Python dependencies
 ├── .env.example           # Environment variables template
+├── CONTRIBUTING.md        # Contributor guide and workflow instructions
+├── LICENSE                # MIT License
 └── manage.py              # Django management CLI
 ```

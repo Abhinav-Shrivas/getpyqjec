@@ -10,7 +10,9 @@ Never exposes credentials, never logs presigned URLs or sensitive data.
 """
 
 import logging
+import mimetypes
 from io import BytesIO
+from pathlib import Path
 
 import boto3
 from botocore.config import Config
@@ -208,24 +210,130 @@ class R2StorageService:
 
 
 # ---------------------------------------------------------------------------
+# Local Storage Fallback for Development and Testing
+# ---------------------------------------------------------------------------
+class LocalStorageService:
+    """
+    Local filesystem fallback storage service for development and testing.
+    Mirrors the R2StorageService interface so contributors can run the app
+    without Cloudflare R2 credentials.
+    """
+
+    def __init__(self, bucket_name: str):
+        self.bucket_name = bucket_name
+        media_root = Path(getattr(settings, "MEDIA_ROOT", settings.BASE_DIR / "media"))
+        self.base_dir = media_root / bucket_name
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+
+    def upload_object(
+        self,
+        key: str,
+        data: bytes,
+        content_type: str = "application/octet-stream",
+        metadata: dict | None = None,
+    ) -> dict:
+        clean_key = key.lstrip("/")
+        file_path = self.base_dir / clean_key
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_bytes(data)
+        return {"key": clean_key, "size": len(data)}
+
+    def download_object(self, key: str) -> BytesIO:
+        if not key or not str(key).strip():
+            raise R2StorageError("Invalid object key: key cannot be empty.")
+        clean_key = key.lstrip("/")
+        file_path = self.base_dir / clean_key
+        if not file_path.exists():
+            raise R2NoSuchKeyError(f"Object not found in local storage: {key}")
+        return BytesIO(file_path.read_bytes())
+
+    def generate_presigned_download_url(
+        self, key: str, expiry: int | None = None
+    ) -> str:
+        clean_key = key.lstrip("/")
+        media_url = getattr(settings, "MEDIA_URL", "/media/").rstrip("/")
+        # In local development where the React dev server runs on port 5173,
+        # prepend the Django backend URL so direct browser clicks resolve correctly.
+        backend_host = getattr(settings, "BACKEND_HOST", "http://localhost:8000").rstrip("/")
+        return f"{backend_host}{media_url}/{self.bucket_name}/{clean_key}"
+
+    def delete_object(self, key: str) -> bool:
+        clean_key = key.lstrip("/")
+        file_path = self.base_dir / clean_key
+        if file_path.exists():
+            file_path.unlink()
+        return True
+
+    def object_exists(self, key: str) -> bool:
+        clean_key = key.lstrip("/")
+        return (self.base_dir / clean_key).exists()
+
+    def get_object_metadata(self, key: str) -> dict:
+        clean_key = key.lstrip("/")
+        file_path = self.base_dir / clean_key
+        if not file_path.exists():
+            raise R2NoSuchKeyError(f"Object not found in local storage: {key}")
+        stat = file_path.stat()
+        mime, _ = mimetypes.guess_type(str(file_path))
+        return {
+            "content_type": mime or "application/octet-stream",
+            "content_length": stat.st_size,
+            "metadata": {},
+            "last_modified": stat.st_mtime,
+        }
+
+
+# ---------------------------------------------------------------------------
 # Singleton instances — lazily created to avoid import-time crashes when
 # R2 is not configured (e.g. during tests with mocks).
+# Falls back seamlessly to LocalStorageService when R2 keys are absent.
 # ---------------------------------------------------------------------------
 _pyq_storage = None
 _verification_storage = None
 
 
-def get_pyq_storage() -> R2StorageService:
-    """Get the PYQ bucket storage service instance."""
+def is_r2_configured() -> bool:
+    """Check if all required Cloudflare R2 credentials are set."""
+    if getattr(settings, "FORCE_LOCAL_STORAGE", False):
+        return False
+    endpoint = (getattr(settings, "R2_ENDPOINT_URL", "") or "").strip()
+    access_key = (getattr(settings, "R2_ACCESS_KEY_ID", "") or "").strip()
+    secret_key = (getattr(settings, "R2_SECRET_ACCESS_KEY", "") or "").strip()
+
+    # Reject placeholder values from .env.example
+    placeholders = {
+        "your_r2_access_key_id",
+        "your_r2_secret_access_key",
+        "your_cloudflare_account_id",
+        "",
+    }
+    if access_key in placeholders or secret_key in placeholders or "your_cloudflare_account_id" in endpoint:
+        return False
+
+    return bool(endpoint and access_key and secret_key)
+
+
+def get_pyq_storage():
+    """Get the PYQ bucket storage service instance (Cloudflare R2 or local fallback)."""
     global _pyq_storage
     if _pyq_storage is None:
-        _pyq_storage = R2StorageService(settings.R2_PYQ_BUCKET)
+        bucket = getattr(settings, "R2_PYQ_BUCKET", "getpyqjec-pyqs")
+        if is_r2_configured():
+            _pyq_storage = R2StorageService(bucket)
+        else:
+            logger.info("Cloudflare R2 not configured. Using LocalStorageService for PYQs.")
+            _pyq_storage = LocalStorageService(bucket)
     return _pyq_storage
 
 
-def get_verification_storage() -> R2StorageService:
-    """Get the verification bucket storage service instance."""
+def get_verification_storage():
+    """Get the verification bucket storage service instance (Cloudflare R2 or local fallback)."""
     global _verification_storage
     if _verification_storage is None:
-        _verification_storage = R2StorageService(settings.R2_VERIFICATION_BUCKET)
+        bucket = getattr(settings, "R2_VERIFICATION_BUCKET", "getpyqjec-verification")
+        if is_r2_configured():
+            _verification_storage = R2StorageService(bucket)
+        else:
+            logger.info("Cloudflare R2 not configured. Using LocalStorageService for verification.")
+            _verification_storage = LocalStorageService(bucket)
     return _verification_storage

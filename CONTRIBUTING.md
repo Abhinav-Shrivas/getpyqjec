@@ -1,0 +1,194 @@
+# Contributing to GetPYQ JEC
+
+First off, thank you for considering contributing to **GetPYQ JEC**! 🎉
+
+GetPYQ JEC is an open-source, student-led platform providing previous year question papers for Jabalpur Engineering College students. Whether you are fixing a typo, resolving a bug, improving UI/UX, or adding new features, your help is warmly welcomed!
+
+---
+
+## 🧭 Table of Contents
+1. [Code of Conduct](#code-of-conduct)
+2. [Local Development Setup](#local-development-setup)
+   - [Option A: Docker (Recommended - One Command)](#option-a-docker-recommended)
+   - [Option B: Manual Setup (Python + Node.js)](#option-b-manual-setup)
+3. [Zero Cloud Keys Required (Local Fallbacks)](#zero-cloud-keys-required-local-fallbacks)
+4. [Seeding Sample Data](#seeding-sample-data)
+5. [Git Workflow & Branching Strategy](#git-workflow--branching-strategy)
+6. [Commit Conventions](#commit-conventions)
+7. [Running Tests](#running-tests)
+8. [Submitting a Pull Request](#submitting-a-pull-request)
+
+---
+
+## 📜 Code of Conduct
+We are committed to providing a friendly, safe, and welcoming environment for everyone, regardless of experience level, background, or identity. Please be respectful, constructive, and collaborative in all issues, pull requests, and discussions.
+
+---
+
+## 💻 Local Development Setup
+
+You do **not** need Cloudflare R2 credentials, a NeonDB PostgreSQL account, or a Resend API key to develop locally. The application automatically falls back to local SQLite, local disk storage, and console email output.
+
+### Option A: Docker (Recommended)
+
+If you have [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed, you can start the entire stack with a single command:
+
+```bash
+docker compose up --build
+```
+
+* **Frontend**: [http://localhost:5173](http://localhost:5173) (Vite with hot-module reload)
+* **Backend API**: [http://localhost:8000](http://localhost:8000) (Django with auto-reload)
+* **Admin Panel**: [http://localhost:8000/admin](http://localhost:8000/admin)
+
+To seed demo data while Docker is running:
+```bash
+docker compose exec backend python manage.py seed_dev_data
+```
+
+---
+
+### Option B: Manual Setup
+
+If you prefer running directly on your host machine:
+
+#### Prerequisites
+* **Python 3.10+**
+* **Node.js 18+** & npm
+* **Git**
+
+#### 1. Backend Setup (Django)
+```bash
+# 1. Create and activate a virtual environment
+python -m venv venv
+
+# Windows (PowerShell):
+venv\Scripts\Activate.ps1
+# macOS / Linux:
+source venv/bin/activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Create .env from template (no cloud keys needed for local development!)
+copy .env.example .env    # Windows
+cp .env.example .env      # macOS / Linux
+
+# 4. Apply database migrations
+python manage.py migrate
+
+# 5. Populate sample data (users, subjects, papers)
+python manage.py seed_dev_data
+
+# 6. Start the backend server
+python manage.py runserver
+```
+*Backend runs on `http://127.0.0.1:8000`.*
+
+#### 2. Frontend Setup (React / Vite)
+In a separate terminal:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+*Frontend runs on `http://localhost:5173`.*
+
+---
+
+## 🛡️ Zero Cloud Keys Required (Local Fallbacks)
+
+GetPYQ JEC is designed for seamless local onboarding:
+1. **Database**: When `DATABASE_URL` is omitted in `.env`, Django automatically uses local `db.sqlite3`.
+2. **File Storage (Cloudflare R2 Fallback)**: If R2 credentials are missing, uploads and downloads automatically save to your local `media/` directory.
+3. **Emails (Resend Fallback)**: In local development (`DEBUG=True`), OTP and verification emails are printed directly to your terminal console instead of attempting to send over the internet.
+
+---
+
+## 🧪 Seeding Sample Data
+
+To avoid testing with an empty database, run the built-in seed command:
+
+```bash
+python manage.py seed_dev_data
+```
+
+This automatically generates:
+* **Admin Account**: `admin@jecjabalpur.ac.in` / Password: `admin123`
+* **Verified Student**: `student@jecjabalpur.ac.in` / Password: `student123`
+* **Pending Verification Student**: `pending@jecjabalpur.ac.in` / Password: `student123`
+* **Sample PYQ Papers**: Valid sample PDF papers across CSE, IT, and ME with multiple exam sessions and years.
+* **Sample Subject Request**: A mock unlisted subject request ready for approval testing in the admin menu.
+
+---
+
+## 🌿 Git Workflow & Branching Strategy
+
+We follow the standard **GitHub Flow**:
+
+1. **Fork the repository** on GitHub.
+2. **Clone your fork** locally:
+   ```bash
+   git clone https://github.com/<your-username>/getpyqjec.git
+   cd getpyqjec
+   ```
+3. **Create a descriptive feature branch** off `main`:
+   ```bash
+   git checkout -b feat/your-feature-name
+   # or for bug fixes:
+   git checkout -b fix/issue-description
+   ```
+4. **Make your changes** in focused, well-documented commits.
+5. **Keep your branch updated** with upstream `main`:
+   ```bash
+   git remote add upstream https://github.com/hardikgaikwad/getpyqjec.git
+   git fetch upstream
+   git rebase upstream/main
+   ```
+
+---
+
+## 📝 Commit Conventions
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+* `feat: add filter by exam session in search`
+* `fix: correct navbar blur animation on mobile touchscreens`
+* `docs: update setup instructions in README`
+* `refactor: simplify token refresh in http.js`
+* `test: add unit tests for subject approval API`
+
+---
+
+## 🧪 Running Tests
+
+Always ensure existing tests pass before submitting a Pull Request:
+
+### Backend Tests
+```bash
+python manage.py test core
+```
+
+### Frontend Build & Lint Check
+```bash
+cd frontend
+npm run build
+```
+
+---
+
+## 🚀 Submitting a Pull Request
+
+1. Push your branch to your GitHub fork:
+   ```bash
+   git push origin feat/your-feature-name
+   ```
+2. Navigate to [hardikgaikwad/getpyqjec](https://github.com/hardikgaikwad/getpyqjec) on GitHub and click **"Compare & pull request"**.
+3. **PR Title**: Use conventional commit format (e.g., `feat: support dark mode toggle`).
+4. **Description**:
+   - What changed and why?
+   - Any relevant issue numbers (`Fixes #12`).
+   - Screenshots or recordings if UI changes were made.
+5. Ensure all test checks pass. Maintainers will review your PR and provide feedback!
+
+Thank you for helping make GetPYQ JEC better for all students! 🎓
