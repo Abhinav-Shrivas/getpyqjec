@@ -195,15 +195,22 @@ npm run dev
 
 ---
 
-## 👥 Seed Accounts for Testing
+## 👥 Seed Accounts & Demo Data for Testing
 
-Running `python manage.py seed_dev_data` provides ready-to-use credentials:
+Running `python manage.py seed_dev_data` provides ready-to-use accounts:
 
 | Role | Email | Password | Status |
 | :--- | :--- | :--- | :--- |
 | **Admin** | `admin@jecjabalpur.ac.in` | `admin123` | Verified (Access to `/admin` & moderation) |
 | **Student** | `student@jecjabalpur.ac.in` | `student123` | Verified (Can upload PYQs) |
-| **Pending Student** | `pending@jecjabalpur.ac.in` | `student123` | Pending Review (For admin verification testing) |
+| **Pending Student** | `pending@jecjabalpur.ac.in` | `student123` | Pending Review (Mock ID card generated for verification review) |
+
+### 📄 Sample Papers for Download & Merge Testing
+Binary PDFs are gitignored to keep repository clones lightweight. The seed command **programmatically generates 12 real 1-page sample A4 PDFs** under `./media/getpyqjec-pyqs/` so you can immediately test paper browsing, merging, and downloading:
+* **CSE - Semester 4**: Database Management Systems (`CS42`) — 2021, 2022, 2023
+* **CSE - Semester 3**: Energy & Environmental Engineering (`CH32`) — 2021, 2022, 2023
+* **IT - Semester 3**: Energy & Environmental Engineering (`CH32`) — 2021, 2022, 2023
+* **ME - Semester 3**: Mathematics-III (`MA31`) — 2021, 2022, 2023
 
 ---
 

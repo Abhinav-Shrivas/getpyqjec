@@ -105,7 +105,7 @@ GetPYQ JEC is designed for seamless local onboarding:
 
 ---
 
-## 🧪 Seeding Sample Data
+## 🧪 Seeding Sample Data & Demo PDFs
 
 To avoid testing with an empty database, run the built-in seed command:
 
@@ -113,12 +113,25 @@ To avoid testing with an empty database, run the built-in seed command:
 python manage.py seed_dev_data
 ```
 
-This automatically generates:
-* **Admin Account**: `admin@jecjabalpur.ac.in` / Password: `admin123`
-* **Verified Student**: `student@jecjabalpur.ac.in` / Password: `student123`
-* **Pending Verification Student**: `pending@jecjabalpur.ac.in` / Password: `student123`
-* **Sample PYQ Papers**: Valid sample PDF papers across CSE, IT, and ME with multiple exam sessions and years.
-* **Sample Subject Request**: A mock unlisted subject request ready for approval testing in the admin menu.
+### 📄 How Demo PDFs Work (Generated on the Fly)
+To keep the git repository lightweight and fast to clone, **raw binary files (PDFs, images) are gitignored and never committed to GitHub**. 
+
+Instead, `python manage.py seed_dev_data` **programmatically generates 12 real 1-page sample A4 PDFs** and a demo student ID card image directly on your local disk under `./media/`.
+
+You can immediately test paper browsing, merging, and downloading for the following subjects:
+
+| Branch | Semester | Subject Code | Subject Name | Years Available |
+| :--- | :---: | :---: | :--- | :---: |
+| **CSE** | 4th Sem | `CS42` | Database Management Systems | 2021, 2022, 2023 |
+| **CSE** | 3rd Sem | `CH32` | Energy & Environmental Engineering | 2021, 2022, 2023 |
+| **IT** | 3rd Sem | `CH32` | Energy & Environmental Engineering | 2021, 2022, 2023 |
+| **ME** | 3rd Sem | `MA31` | Mathematics-III | 2021, 2022, 2023 |
+
+### 👥 Seed Accounts Created
+* **Admin Account**: `admin@jecjabalpur.ac.in` / Password: `admin123` (Access to moderation & admin APIs)
+* **Verified Student**: `student@jecjabalpur.ac.in` / Password: `student123` (Access to upload PYQs)
+* **Pending Verification Student**: `pending@jecjabalpur.ac.in` / Password: `student123` (Includes a generated mock ID card under `media/getpyqjec-verifications/` for testing admin approval)
+* **Sample Subject Request**: A mock unlisted subject request (`CS508 - Cloud Computing & DevOps`) ready for approval testing in the admin menu.
 
 ---
 
