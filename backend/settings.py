@@ -51,6 +51,7 @@ _allowed_hosts_env = os.environ.get('ALLOWED_HOSTS')
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
+    "backend",
     "api.getpyqjec.in",
     "getpyqjec.in",
     "www.getpyqjec.in",
