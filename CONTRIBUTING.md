@@ -128,9 +128,9 @@ You can immediately test paper browsing, merging, and downloading for the follow
 | **ME** | 3rd Sem | `MA31` | Mathematics-III | 2021, 2022, 2023 |
 
 ### 👥 Seed Accounts Created
-* **Admin Account**: `admin@jecjabalpur.ac.in` / Password: `admin123` (Access to moderation & admin APIs)
-* **Verified Student**: `student@jecjabalpur.ac.in` / Password: `student123` (Access to upload PYQs)
-* **Pending Verification Student**: `pending@jecjabalpur.ac.in` / Password: `student123` (Includes a generated mock ID card under `media/getpyqjec-verifications/` for testing admin approval)
+* **Admin Account**: Roll No: `0201IT211001` | Email: `admin@jecjabalpur.ac.in` | Password: `admin123` (Access to moderation, unlisted subjects & admin APIs)
+* **Verified Student**: Roll No: `0201CS221045` | Email: `student@jecjabalpur.ac.in` | Password: `student123` (Access to upload PYQs)
+* **Pending Verification Student**: Roll No: `0201ME231012` | Email: `pending@jecjabalpur.ac.in` | Password: `student123` (Includes a generated mock ID card under `media/getpyqjec-verifications/` for testing admin approval)
 * **Sample Subject Request**: A mock unlisted subject request (`CS508 - Cloud Computing & DevOps`) ready for approval testing in the admin menu.
 
 ---

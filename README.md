@@ -209,11 +209,14 @@ npm run dev
 
 Running `python manage.py seed_dev_data` provides ready-to-use accounts:
 
-| Role | Email | Password | Status |
-| :--- | :--- | :--- | :--- |
-| **Admin** | `admin@jecjabalpur.ac.in` | `admin123` | Verified (Access to `/admin` & moderation) |
-| **Student** | `student@jecjabalpur.ac.in` | `student123` | Verified (Can upload PYQs) |
-| **Pending Student** | `pending@jecjabalpur.ac.in` | `student123` | Pending Review (Mock ID card generated for verification review) |
+| Role | Enrollment / Roll No. | Email | Password | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Admin** | `0201IT211001` | `admin@jecjabalpur.ac.in` | `admin123` | Verified (Access to `/admin`, unlisted subjects & moderation) |
+| **Student** | `0201CS221045` | `student@jecjabalpur.ac.in` | `student123` | Verified (Can upload PYQs) |
+| **Pending Student** | `0201ME231012` | `pending@jecjabalpur.ac.in` | `student123` | Pending Review (Mock ID card generated for verification review) |
+
+> [!NOTE]
+> When logging in on the frontend, enter the **Enrollment / Roll No.** and **Password**.
 
 ### 📄 Sample Papers for Download & Merge Testing
 Binary PDFs are gitignored to keep repository clones lightweight. The seed command **programmatically generates 12 real 1-page sample A4 PDFs** under `./media/getpyqjec-pyqs/` so you can immediately test paper browsing, merging, and downloading:
