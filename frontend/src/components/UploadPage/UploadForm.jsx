@@ -370,7 +370,6 @@ export default function UploadFormPYQ({ uploadFn }) {
       formData.append("file", finalFile);
 
       await uploadFn(formData);
-      refreshExisting();
       setSelectedValues(initialState);
       setCustomSubjectCode("");
       setCustomSubjectName("");
