@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import classes from "./Footer.module.css";
+import logoImg from "../../assets/logo.png";
 
 export default function Footer() {
   const handleScrollToTop = () => {
@@ -15,10 +16,8 @@ export default function Footer() {
             <div className={classes.brandSection}>
               <Link to="/" onClick={handleScrollToTop} className={classes.logoLink} aria-label="GETPYQ JEC Home">
                 <div className={classes.logoGroup}>
-                  <div className={classes.logoBadge}>
-                    <span>&gt;_</span>
-                  </div>
-                  <span className={classes.logoTitle}>GETPYQJEC</span>
+                  <img src={logoImg} alt="GETPYQ JEC Logo" className={classes.logoImage} />
+                  <span className={classes.logoTitle}>get(pyq jec)</span>
                 </div>
               </Link>
 

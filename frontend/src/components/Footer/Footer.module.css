@@ -19,6 +19,15 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'Heming';
+  src: url('../../assets/heming/Heming-Variable.ttf') format('truetype-variations'),
+       url('../../assets/heming/Heming-Variable.ttf') format('truetype');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 .footer {
   width: 100%;
   margin-top: auto;
@@ -68,6 +77,21 @@
   gap: 10px;
 }
 
+.logoImage {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  display: block;
+  border-radius: 6px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.logoLink:hover .logoImage {
+  transform: translateY(-1px) scale(1.05);
+  filter: drop-shadow(0 2px 8px rgba(168, 85, 247, 0.5));
+}
+
 .logoBadge {
   width: 32px;
   height: 32px;
@@ -94,10 +118,11 @@
 
 .logoTitle {
   color: #EFEEE8;
-  font-family: 'Outfit Medium', sans-serif;
-  font-weight: 500;
-  font-size: 1.15rem;
-  letter-spacing: 0.5px;
+  font-family: 'Heming', sans-serif;
+  font-weight: 600;
+  font-size: 1.50rem;
+  letter-spacing: 0.2px;
+  line-height: 1;
   transition: color 0.2s ease;
 }
 

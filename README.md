@@ -1,14 +1,16 @@
 <div align="center">
-  <h1>🎓 GetPYQJEC</h1>
+  <img src="frontend/src/assets/logo.png" alt="GetPYQ JEC Logo" width="100" />
+  <h1>GetPYQJEC</h1>
   <p><strong>The Community-Driven Academic Archive for JEC Students</strong></p>
   <p>Built by students, for students — an open platform to download custom PDF bundles and contribute verified question papers across all engineering branches.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React 19" />
-    <img src="https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E" alt="Vite" />
-    <img src="https://img.shields.io/badge/Django_6-092E20?style=for-the-badge&logo=django&logoColor=white" alt="Django 6" />
-    <img src="https://img.shields.io/badge/Cloudflare_R2-F38020?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Cloudflare R2" />
-    <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+    <img src="https://img.shields.io/badge/React_19-14121F?style=flat&logo=react&logoColor=61DAFB" alt="React 19" />
+    <img src="https://img.shields.io/badge/Vite_7-14121F?style=flat&logo=vite&logoColor=FFD62E" alt="Vite 7" />
+    <img src="https://img.shields.io/badge/Django_5.2-14121F?style=flat&logo=django&logoColor=44B78B" alt="Django 5.2" />
+    <img src="https://img.shields.io/badge/Cloudflare_R2-14121F?style=flat&logo=cloudflare&logoColor=F38020" alt="Cloudflare R2" />
+    <img src="https://img.shields.io/badge/PostgreSQL-14121F?style=flat&logo=postgresql&logoColor=4169E1" alt="PostgreSQL" />
+    <img src="https://img.shields.io/badge/Docker-14121F?style=flat&logo=docker&logoColor=2496ED" alt="Docker" />
   </p>
 </div>
 
@@ -34,12 +36,16 @@
 
 ## ✨ Key Features
 
-- 🚀 **Lightning-Fast Modern UI**: Powered by React 19 and Vite with sleek, responsive controls and unified `CustomSelect` dropdowns.
-- ☁️ **Cloudflare R2 Cloud Storage**: Zero-egress-fee, S3-compatible cloud object storage via `boto3` for high-availability PDF and ID card hosting.
+- 🚀 **Lightning-Fast Modern UI**: Powered by React 19 and Vite 7 with custom Heming typography, sleek responsive controls, and unified `CustomSelect` dropdowns.
+- ☁️ **Cloudflare R2 Cloud Storage**: Zero-egress-fee, S3-compatible cloud object storage via `boto3` for high-availability PDF and ID card hosting (with automatic local disk fallback).
 - 📑 **Dynamic PDF Merging**: On-the-fly multi-year question paper merging and streaming via `pikepdf` thread pools.
+- 📸 **In-Browser Multi-Image to PDF**: Contributors can capture or upload multiple photos/scans of question paper pages and compile them into a single clean PDF in-browser using `pdf-lib`.
 - 🎓 **Student Verification Workflow**: Contributor access is protected by an ID-card verification lifecycle, allowing administrators to inspect and verify students before granting paper upload rights.
+- 📚 **Unlisted Subject Approval**: When syllabus electives or updated course codes are not yet in the catalog, contributors can request unlisted subjects for admin approval directly into the curriculum.
+- 📜 **Paper Upload History & Audit Logs**: Administrators have direct visibility into all community paper submissions, with individual paper audit trails, uploader details, and direct one-click PDF validation links.
 - ⚡ **Dynamic Upload Filtering**: Upload forms automatically query existing papers and omit years and sessions where papers are already available to prevent duplicates.
 - 🔐 **JWT Authentication & Moderation**: Secure cookie-managed token authentication, role-based permissions (`IsVerifiedStudent`, `IsAdminUser`), and admin review dashboards.
+- 📬 **Automated Transactional Emails**: Password reset links and verification review results delivered via Resend API (printed directly to console in local development).
 
 ---
 
@@ -49,7 +55,7 @@
 +-----------------------------------------------------------------------------------------+
 |                               Client (React 19 + Vite SPA)                              |
 |          - CustomSelect Dropdowns       - Dynamic Year/Session Filter                   |
-|          - Student Verification Portal  - In-Browser Multi-Image to PDF                 |
+|          - Student Verification Portal  - In-Browser Multi-Image to PDF (pdf-lib)       |
 +--------+----------------------------+-----------------------------+---------------------+
          |                            |                             |
          | HTTP / JSON                | HTTP / JSON                 | Multipart / Streams
@@ -61,7 +67,7 @@
 |                    |       |                    |        |                    |
 | * Contributor Auth |       | * Existing Options |        | * ThreadPool Merge |
 | * ID Verification  |       | * Filter by Branch |        | * Stream Downloads |
-| * Admin Moderation |       | * Semester/Subject |        | * In-Memory Memory |
+| * Subject Requests |       | * Semester/Subject |        | * In-Memory Memory |
 +--------+-----------+       +--------+-----------+        +--------+-----------+
          |                            |                             |
          |                            v                             |
@@ -70,14 +76,16 @@
                        | - Users & Permissions        |
                        | - PYQ Catalog Indexes        |
                        | - Student Verifications      |
+                       | - Unlisted Subject Requests  |
                        +------------------------------+
                                       |
                                       v
                        +------------------------------+
-                       |    Cloudflare R2 Storage     |
+                       |   Cloudflare R2 / Storage    |
                        |                              |
                        |  Bucket: getpyqjec-pyqs      |
                        |  Bucket: getpyqjec-verif...  |
+                       |  (Fallback: local ./media/)  |
                        +------------------------------+
 ```
 
@@ -87,15 +95,17 @@
 
 ### Frontend
 * **React 19**: Modern component-driven UI architecture.
-* **Vite**: Rapid development tooling and production asset bundling.
-* **React Router DOM**: Client-side single-page application routing.
-* **Custom Design System**: Bespoke vanilla CSS tokens, responsive layouts, and unified select menus.
+* **Vite 7**: Rapid development tooling, hot-module replacement (HMR), and production asset bundling.
+* **React Router DOM 7**: Client-side single-page application routing with code splitting.
+* **pdf-lib**: In-browser client-side multi-image scan to PDF compilation.
+* **Custom Design System**: Bespoke vanilla CSS tokens, responsive layouts, Heming typography, and unified select menus.
 
 ### Backend
-* **Django 6.0 & Django REST Framework (DRF)**: High-performance RESTful API endpoints.
+* **Django 5.2 (LTS) & Django REST Framework (DRF)**: High-performance RESTful API endpoints.
 * **Simple JWT**: Token-based authentication with secure cookie handling.
-* **Cloudflare R2 (`boto3`)**: Scalable object storage for papers and verification media.
+* **Cloudflare R2 (`boto3`) & Local Disk Storage**: Scalable object storage for papers and verification media with zero-config local fallback.
 * **Pikepdf**: Low-level high-speed PDF concatenation and generation.
+* **Resend**: Transactional emails for password resets and verification approvals with automatic terminal console fallback.
 * **WhiteNoise**: Direct static file serving for containerized environments.
 * **PostgreSQL / SQLite**: Relational database with specialized composite indexes (`pyq_lookup_idx`).
 
@@ -212,6 +222,9 @@ Binary PDFs are gitignored to keep repository clones lightweight. The seed comma
 * **IT - Semester 3**: Energy & Environmental Engineering (`CH32`) — 2021, 2022, 2023
 * **ME - Semester 3**: Mathematics-III (`MA31`) — 2021, 2022, 2023
 
+### 📋 Sample Unlisted Subject Request for Moderation Testing
+The seed command also creates a sample unlisted subject request for **`CS508`** (*Cloud Computing & DevOps*) in `pending` status. This allows you to immediately test the admin approval workflow at `/admin/unlisted-subjects`.
+
 ---
 
 ## 🤝 Contributing
@@ -238,12 +251,15 @@ getpyqjec/
 ├── core/                  # Main DRF app: models, views, serializers, tests, migrations
 │   └── management/        # Custom management commands (seed_dev_data)
 ├── frontend/              # React single-page application
+│   ├── public/            # Static assets (official logo favicon)
 │   ├── src/               # React components, CustomSelect, AuthContext, HTTP layer
-│   │   ├── components/    # DownloadPage, UploadPage, VerificationPage, CustomSelect, etc.
+│   │   ├── assets/        # Official brand logo (logo.png) & Heming variable font
+│   │   ├── components/    # DownloadPage, UploadPage, VerificationPage, UnlistedSubjectApproval, UploadHistory
 │   │   ├── store/         # Global authentication and verification state
-│   │   └── http.js        # Centralized API fetch methods
+│   │   ├── http.js        # Centralized API fetch methods
+│   │   └── imgTopdf.js    # Client-side multi-image to PDF compiler
 │   └── package.json       # Frontend scripts and dependencies
-├── utils/                 # Utilities: Cloudflare R2 / Local storage and email services
+├── utils/                 # Utilities: Cloudflare R2 / Local storage and Resend email service
 ├── templates/             # Custom HTML templates and admin overrides
 ├── Dockerfile             # Production container image definition
 ├── docker-compose.yml     # Local one-command development environment

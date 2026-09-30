@@ -17,5 +17,11 @@ body {
   color: #d4c9b0;
 }
 
-
-
+@font-face {
+  font-family: 'Heming';
+  src: url('./assets/heming/Heming-Variable.ttf') format('truetype-variations'),
+       url('./assets/heming/Heming-Variable.ttf') format('truetype');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}

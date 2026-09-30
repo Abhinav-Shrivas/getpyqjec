@@ -5,6 +5,15 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'Heming';
+  src: url('../../assets/heming/Heming-Variable.ttf') format('truetype-variations'),
+       url('../../assets/heming/Heming-Variable.ttf') format('truetype');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 .headerWrapper {
   position: sticky;
   top: 0;
@@ -99,6 +108,21 @@
   gap: 10px;
 }
 
+.logo-image {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+  border-radius: 6px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.logo-group:hover .logo-image {
+  transform: translateY(-1px) scale(1.05);
+  filter: drop-shadow(0 2px 8px rgba(168, 85, 247, 0.5));
+}
+
 .logo-badge {
   width: 30px;
   height: 30px;
@@ -125,10 +149,11 @@
 
 .navbar-title {
   color: #EFEEE8;
-  font-family: 'Outfit Medium', sans-serif;
-  font-weight: 500;
-  font-size: 15px;
-  letter-spacing: 1.2px;
+  font-family: 'Heming', sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: 0.2px;
+  line-height: 1;
   transition: color 0.2s ease;
 }
 
@@ -404,8 +429,8 @@
   }
 
   .navbar-title {
-    font-size: 13px;
-    letter-spacing: 0.8px;
+    font-size: 14.5px;
+    letter-spacing: 0.2px;
   }
 
   .icon-btn {
@@ -416,6 +441,11 @@
   .nav-icon {
     width: 15px;
     height: 15px;
+  }
+
+  .logo-image {
+    width: 26px;
+    height: 26px;
   }
 
   .logo-badge {
