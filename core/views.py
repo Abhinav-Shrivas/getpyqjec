@@ -169,32 +169,41 @@ class SubjectListView(APIView):
 
         if semester <= 2:
             branch_aliases.extend(["CommonForAllBranches", "COMMONFORALLBRANCHES"])
+            sem_filter = [1, 2]
+        else:
+            sem_filter = [semester]
 
         current_qs = Subject.objects.filter(
             branch__in=branch_aliases,
-            semester=semester,
+            semester__in=sem_filter,
             is_current=True,
         ).order_by("code")
 
         past_qs = Subject.objects.filter(
             branch__in=branch_aliases,
-            semester=semester,
+            semester__in=sem_filter,
             is_current=False,
         ).order_by("code")
 
-        current_subjects = [
-            {"code": s.code, "name": s.name, "is_current": True}
-            for s in current_qs
-        ]
-        past_subjects = [
-            {"code": s.code, "name": s.name, "is_current": False}
-            for s in past_qs
-        ]
+        seen_codes = set()
+        current_subjects = []
+        for s in current_qs:
+            c = s.code.strip().upper()
+            if c not in seen_codes:
+                seen_codes.add(c)
+                current_subjects.append({"code": s.code, "name": s.name, "is_current": True})
+
+        past_subjects = []
+        for s in past_qs:
+            c = s.code.strip().upper()
+            if c not in seen_codes:
+                seen_codes.add(c)
+                past_subjects.append({"code": s.code, "name": s.name, "is_current": False})
 
         # Also include any distinct subject codes from uploaded PYQs if not already present
-        existing_codes = {s["code"] for s in current_subjects} | {s["code"] for s in past_subjects}
+        existing_codes = {s["code"].upper() for s in current_subjects} | {s["code"].upper() for s in past_subjects}
         extra_pyq_codes = (
-            PYQ.objects.filter(branch__in=branch_aliases, semester=semester)
+            PYQ.objects.filter(branch__in=branch_aliases, semester__in=sem_filter)
             .exclude(subject_code__in=existing_codes)
             .values_list("subject_code", flat=True)
             .distinct()
@@ -409,13 +418,26 @@ class UploadPYQView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if PYQ.objects.filter(
-            branch=branch,
-            semester=semester,
-            subject_code=subject_code,
-            year=year,
-            exam_session=exam_session,
-        ).exists():
+        is_common_sem = (semester <= 2) or (branch in ("COMMONFORALLBRANCHES", "COMMON FOR ALL BRANCHES"))
+        if is_common_sem:
+            branch = "COMMONFORALLBRANCHES"
+            duplicate_filter = {
+                "branch__in": ["CommonForAllBranches", "COMMONFORALLBRANCHES"],
+                "semester__in": [1, 2],
+                "subject_code": subject_code,
+                "year": year,
+                "exam_session": exam_session,
+            }
+        else:
+            duplicate_filter = {
+                "branch": branch,
+                "semester": semester,
+                "subject_code": subject_code,
+                "year": year,
+                "exam_session": exam_session,
+            }
+
+        if PYQ.objects.filter(**duplicate_filter).exists():
             return Response(
                 {"error": "PYQ already exists for this subject/year/session"},
                 status=status.HTTP_409_CONFLICT,
@@ -454,12 +476,12 @@ class UploadPYQView(APIView):
             branch_aliases.append("CSE")
         elif branch == "CSE":
             branch_aliases.append("CS")
-        if semester <= 2:
+        if is_common_sem:
             branch_aliases.extend(["CommonForAllBranches", "COMMONFORALLBRANCHES"])
 
         subj = Subject.objects.filter(
             branch__in=branch_aliases,
-            semester=semester,
+            semester__in=[1, 2] if is_common_sem else [semester],
             code=subject_code,
         ).first()
 
@@ -509,8 +531,6 @@ class UploadPYQView(APIView):
 class DownloadPYQView(APIView):
     permission_classes = [AllowAny]
 
-    MAX_PDFS_PER_MERGE = 10
-
     def get(self, request):
         branch = request.GET.get("branch")
         semester = request.GET.get("semester")
@@ -540,14 +560,25 @@ class DownloadPYQView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        is_common_sem = (semester <= 2) or (branch.upper() in ("COMMONFORALLBRANCHES", "COMMON FOR ALL BRANCHES"))
+        if is_common_sem:
+            base_filter = {
+                "branch__in": ["CommonForAllBranches", "COMMONFORALLBRANCHES"],
+                "semester__in": [1, 2],
+                "year__gte": from_year,
+                "year__lte": to_year,
+            }
+        else:
+            base_filter = {
+                "branch": branch.upper(),
+                "semester": semester,
+                "year__gte": from_year,
+                "year__lte": to_year,
+            }
+
         # Query database for matching PYQs
         queryset = (
-            PYQ.objects.filter(
-                branch=branch.upper(),
-                semester=semester,
-                year__gte=from_year,
-                year__lte=to_year,
-            )
+            PYQ.objects.filter(**base_filter)
             .exclude(r2_object_key="")
             .filter(r2_object_key__isnull=False)
         )
@@ -555,10 +586,19 @@ class DownloadPYQView(APIView):
         if subject_code.lower() != "all":
             queryset = queryset.filter(subject_code=subject_code.upper())
 
-        pyqs = list(
-            queryset.only("r2_object_key", "year", "subject_code", "exam_session")
+        raw_pyqs = list(
+            queryset.only("id", "r2_object_key", "year", "subject_code", "exam_session")
             .order_by("subject_code", "year", "exam_session")
         )
+
+        # Deduplicate if duplicate records exist across sem 1 and sem 2
+        seen_keys = set()
+        pyqs = []
+        for p in raw_pyqs:
+            key = (p.subject_code.upper(), p.year, p.exam_session.lower())
+            if key not in seen_keys:
+                seen_keys.add(key)
+                pyqs.append(p)
 
         all_years = set(range(from_year, to_year + 1))
         is_all_subjects = subject_code.lower() == "all"
@@ -580,13 +620,7 @@ class DownloadPYQView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if len(pyqs) > self.MAX_PDFS_PER_MERGE:
-            return JsonResponse(
-                {
-                    "error": f"Too many PDFs ({len(pyqs)}). Maximum {self.MAX_PDFS_PER_MERGE} per download.",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+
 
         # Download PDFs from R2 and merge
         try:
@@ -1173,38 +1207,7 @@ class VerificationDeleteDocumentView(APIView):
         })
 
 
-class ExistingPYQOptionsView(APIView):
-    """
-    GET /upload/existing-options/?branch=IT&semester=6&subject_code=IT62
-    Returns existing PYQs for the branch and semester (and optional subject_code).
-    Used by the upload form to omit options where data is already available.
-    """
-    permission_classes = [AllowAny]
 
-    def get(self, request):
-        branch = request.GET.get("branch", "").strip().upper()
-        semester = request.GET.get("semester", "").strip()
-        subject_code = request.GET.get("subject_code", "").strip().upper()
-
-        if not branch or not semester:
-            return Response({"existing": []})
-
-        try:
-            semester = int(semester)
-        except ValueError:
-            return Response({"existing": []})
-
-        queryset = (
-            PYQ.objects.filter(branch=branch, semester=semester)
-            .exclude(r2_object_key="")
-            .filter(r2_object_key__isnull=False)
-        )
-
-        if subject_code and subject_code.lower() != "all":
-            queryset = queryset.filter(subject_code=subject_code)
-
-        existing = list(queryset.values("subject_code", "year", "exam_session"))
-        return Response({"existing": existing})
 
 
 class PYQHistoryPagination(PageNumberPagination):

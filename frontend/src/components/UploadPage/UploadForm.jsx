@@ -8,7 +8,7 @@ import {
 } from "../../information";
 import createPdfFromImages from "../../imgTopdf";
 import CustomSelect from "../CustomSelect/CustomSelect";
-import { fetchExistingPYQs, fetchSubjects, requestSubjectAddition } from "../../http";
+import { fetchSubjects, requestSubjectAddition } from "../../http";
 import { useAuth } from "../../store/AuthContext";
 import ErrorPage from "../ErrorPage/Error";
 
@@ -41,7 +41,6 @@ export default function UploadFormPYQ({ uploadFn }) {
   const [modalState, setModalState] = useState(null); // { type: 'uploading' | 'requesting' | 'success' | 'error', title, message, isSessionExpired }
   const [dragIndex, setDragIndex] = useState(null);
   const [showOverlay, setShowOverlay] = useState(false);
-  const [existingPYQs, setExistingPYQs] = useState([]);
   const fileInputRef = useRef(null);
   const formRef = useRef(null);
 
@@ -79,112 +78,7 @@ export default function UploadFormPYQ({ uploadFn }) {
     };
   }, [modalState, handleCloseModal]);
 
-  // Fetch existing papers whenever semester and branch change
-  const refreshExisting = useCallback(() => {
-    if (!selectedValues.semester || !selectedValues.branch) {
-      setExistingPYQs([]);
-      return;
-    }
-    fetchExistingPYQs(selectedValues.branch, selectedValues.semester).then((data) => {
-      if (data?.existing) {
-        setExistingPYQs(data.existing);
-      }
-    });
-  }, [selectedValues.branch, selectedValues.semester]);
 
-  useEffect(() => {
-    refreshExisting();
-  }, [refreshExisting]);
-
-  // Existing records for currently selected subject
-  const currentSubjectExisting = useMemo(() => {
-    if (!selectedValues.subject) return [];
-    return existingPYQs.filter(
-      (item) => item.subject_code?.toUpperCase() === selectedValues.subject?.toUpperCase()
-    );
-  }, [existingPYQs, selectedValues.subject]);
-
-  // Compute available Year options — omitting years that already have both sessions (or the selected session)
-  const availableYearOptions = useMemo(() => {
-    if (!selectedValues.subject) {
-      return allYears.map((y) => ({ value: String(y), label: String(y) }));
-    }
-
-    return allYears
-      .filter((year) => {
-        const yearRecords = currentSubjectExisting.filter(
-          (r) => Number(r.year) === Number(year)
-        );
-        const uploadedSessions = new Set(
-          yearRecords.map((r) => r.exam_session?.trim().toLowerCase())
-        );
-
-        // If both april and december session pyq is present, the whole year will NOT be listed
-        if (uploadedSessions.has("april") && uploadedSessions.has("december")) {
-          return false;
-        }
-
-        // If session is already selected, omit this year if it already has that session
-        if (selectedValues.session) {
-          const hasSession = uploadedSessions.has(
-            selectedValues.session.trim().toLowerCase()
-          );
-          return !hasSession;
-        }
-
-        return true;
-      })
-      .map((year) => ({ value: String(year), label: String(year) }));
-  }, [selectedValues.subject, selectedValues.session, currentSubjectExisting]);
-
-  // Compute available Session options — omitting sessions already uploaded for this (subject, year)
-  const availableSessionOptions = useMemo(() => {
-    if (!selectedValues.subject || !selectedValues.year) {
-      return ALL_SESSIONS;
-    }
-
-    const selectedYearNum = Number(selectedValues.year);
-    const existingSessionsForYear = new Set(
-      currentSubjectExisting
-        .filter((r) => Number(r.year) === selectedYearNum)
-        .map((r) => r.exam_session?.trim().toLowerCase())
-    );
-
-    return ALL_SESSIONS.filter(
-      (s) => !existingSessionsForYear.has(s.value.trim().toLowerCase())
-    );
-  }, [selectedValues.subject, selectedValues.year, currentSubjectExisting]);
-
-  // Auto-clear year if selected year is no longer available
-  useEffect(() => {
-    if (selectedValues.year && availableYearOptions.length > 0) {
-      const isYearValid = availableYearOptions.some(
-        (opt) => opt.value === String(selectedValues.year)
-      );
-      if (!isYearValid) {
-        setSelectedValues((prev) => ({ ...prev, year: "", session: "" }));
-      }
-    }
-  }, [availableYearOptions, selectedValues.year]);
-
-  // Auto-adjust session if selected session is no longer available for the year
-  useEffect(() => {
-    if (selectedValues.year && availableSessionOptions.length > 0) {
-      const isSessionValid = availableSessionOptions.some(
-        (opt) => opt.value === selectedValues.session
-      );
-      if (!isSessionValid) {
-        if (availableSessionOptions.length === 1) {
-          setSelectedValues((prev) => ({
-            ...prev,
-            session: availableSessionOptions[0].value,
-          }));
-        } else {
-          setSelectedValues((prev) => ({ ...prev, session: "" }));
-        }
-      }
-    }
-  }, [availableSessionOptions, selectedValues.year, selectedValues.session]);
 
   // Detect file type from selected files
   const detectedType = useMemo(() => {
@@ -686,16 +580,10 @@ export default function UploadFormPYQ({ uploadFn }) {
               <CustomSelect
                 name="year"
                 value={selectedValues.year}
-                placeholder={
-                  !selectedValues.subject
-                    ? "Select Subject First"
-                    : availableYearOptions.length === 0
-                    ? "All Years Uploaded"
-                    : "Select Year"
-                }
-                options={availableYearOptions}
+                placeholder="Select Year"
+                options={allYears.map((y) => ({ value: String(y), label: String(y) }))}
                 required
-                disabled={!selectedValues.subject || availableYearOptions.length === 0}
+                disabled={!selectedValues.subject}
                 onChange={(val) =>
                   setSelectedValues((prev) => ({
                     ...prev,
@@ -713,16 +601,10 @@ export default function UploadFormPYQ({ uploadFn }) {
                 id="session"
                 name="session"
                 value={selectedValues.session}
-                placeholder={
-                  !selectedValues.year
-                    ? "Select Year First"
-                    : availableSessionOptions.length === 0
-                    ? "No Sessions Available"
-                    : "Select Session"
-                }
-                options={availableSessionOptions}
+                placeholder="Select Session"
+                options={ALL_SESSIONS}
                 required
-                disabled={!selectedValues.year || availableSessionOptions.length === 0}
+                disabled={!selectedValues.year}
                 onChange={(val) => {
                   setSelectedValues((prev) => ({
                     ...prev,

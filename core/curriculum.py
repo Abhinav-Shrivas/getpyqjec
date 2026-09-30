@@ -317,12 +317,19 @@ def get_expected_subjects(branch: str, semester: int):
             db_subjs = list(
                 Subject.objects.filter(
                     branch__in=['CommonForAllBranches', b, 'COMMONFORALLBRANCHES'],
-                    semester=sem_num,
+                    semester__in=[1, 2],
                     is_current=True,
                 ).values_list('name', 'code')
             )
-            if db_subjs:
-                return db_subjs
+            seen_codes = set()
+            unique_subjs = []
+            for name, code in db_subjs:
+                c = code.upper()
+                if c not in seen_codes:
+                    seen_codes.add(c)
+                    unique_subjs.append([name, code])
+            if unique_subjs:
+                return unique_subjs
         else:
             branch_aliases = [b]
             if b == 'CS':

@@ -192,24 +192,6 @@ const deleteVerificationDocument = async (id) => {
   return data;
 };
 
-const fetchExistingPYQs = async (branch, semester, subjectCode = "") => {
-  try {
-    const params = new URLSearchParams({
-      branch: branch || "",
-      semester: semester || "",
-    });
-    if (subjectCode) {
-      params.append("subject_code", subjectCode);
-    }
-    const res = await fetch(`${API_BASE}/upload/existing-options/?${params.toString()}`);
-    if (!res.ok) return { existing: [] };
-    return await res.json();
-  } catch (err) {
-    console.error("Failed to fetch existing PYQ options:", err);
-    return { existing: [] };
-  }
-};
-
 const getAdminUploadHistory = async ({
   order = "recent",
   branch = "",
@@ -327,7 +309,6 @@ const rejectSubjectRequest = async (id, reason) => {
 export {
   fetchUrls,
   uploadData,
-  fetchExistingPYQs,
   fetchSubjects,
   requestSubjectAddition,
   getAdminSubjectRequests,

@@ -503,57 +503,7 @@ class StudentVerificationTests(TestCase):
         self.assertEqual(verification.status, "verified")  # Status is retained
 
 
-class ExistingPYQOptionsTests(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(
-            rno="0201IT231046",
-            email="student@gmail.com",
-            name="Test Student",
-            password="password123",
-        )
-        PYQ.objects.create(
-            branch="IT",
-            semester=6,
-            subject_code="IT62",
-            year=2025,
-            exam_session="December",
-            r2_object_key="pyqs/IT/test.pdf",
-            uploaded_by=self.user,
-        )
-        # Empty key should be excluded
-        PYQ.objects.create(
-            branch="IT",
-            semester=6,
-            subject_code="IT62",
-            year=2024,
-            exam_session="April",
-            r2_object_key="",
-            uploaded_by=self.user,
-        )
 
-    def test_existing_options_filtering(self):
-        res = self.client.get("/upload/existing-options/?branch=IT&semester=6")
-        self.assertEqual(res.status_code, 200)
-        existing = res.data["existing"]
-        self.assertEqual(len(existing), 1)
-        self.assertEqual(existing[0]["subject_code"], "IT62")
-        self.assertEqual(existing[0]["year"], 2025)
-        self.assertEqual(existing[0]["exam_session"], "December")
-
-    def test_existing_options_with_subject(self):
-        res = self.client.get("/upload/existing-options/?branch=IT&semester=6&subject_code=IT62")
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(len(res.data["existing"]), 1)
-
-        res_none = self.client.get("/upload/existing-options/?branch=IT&semester=6&subject_code=IT61")
-        self.assertEqual(res_none.status_code, 200)
-        self.assertEqual(len(res_none.data["existing"]), 0)
-
-    def test_existing_options_missing_params(self):
-        res = self.client.get("/upload/existing-options/")
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data["existing"], [])
 
 
 class PdfUtilsTests(TestCase):
@@ -1235,6 +1185,107 @@ class EmailServiceTests(TestCase):
             self.assertEqual(params["to"], [student.email])
             self.assertIn("Subject Request Update: CS510", params["subject"])
             self.assertIn("Not approved in current AICTE syllabus", params["text"])
+
+
+class Semester1And2CommonTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            rno="0201IT231046",
+            email="test@jecjabalpur.ac.in",
+            name="Test User",
+            password="testpassword",
+        )
+        StudentVerification.objects.create(
+            user=self.user,
+            status="verified",
+        )
+        self.pdf_bytes = _create_minimal_pdf_bytes()
+
+    @patch("core.views.get_pyq_storage")
+    def test_upload_normalizes_to_common_branch_and_storage(self, mock_get_storage):
+        mock_storage = MagicMock()
+        mock_get_storage.return_value = mock_storage
+
+        self.client.force_authenticate(user=self.user)
+        pdf_file = SimpleUploadedFile("sample.pdf", self.pdf_bytes, content_type="application/pdf")
+        res = self.client.post(
+            "/upload/",
+            {
+                "branch": "CommonForAllBranches",
+                "semester": "1",
+                "subject_code": "BT11",
+                "year": "2023",
+                "exam_session": "April",
+                "file": pdf_file,
+            },
+            format="multipart",
+        )
+        self.assertEqual(res.status_code, 201)
+        pyq = PYQ.objects.get(id=res.data["id"])
+        self.assertEqual(pyq.branch, "COMMONFORALLBRANCHES")
+        self.assertTrue(pyq.r2_object_key.startswith("pyqs/COMMONFORALLBRANCHES/"))
+
+    @patch("core.views.get_pyq_storage")
+    def test_download_cross_semester(self, mock_get_storage):
+        mock_storage = MagicMock()
+        mock_storage.download_object.return_value = self.pdf_bytes
+        mock_get_storage.return_value = mock_storage
+
+        # Created under semester 1
+        PYQ.objects.create(
+            branch="COMMONFORALLBRANCHES",
+            semester=1,
+            subject_code="BT11",
+            year=2023,
+            exam_session="April",
+            r2_object_key="pyqs/COMMONFORALLBRANCHES/bt11_2023.pdf",
+            uploaded_by=self.user,
+        )
+
+        # Downloaded requesting semester 2
+        res = self.client.get(
+            "/download/?branch=CommonForAllBranches&semester=2&subject_code=BT11&from_year=2023&to_year=2023"
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res["Content-Type"], "application/pdf")
+
+
+
+    @patch("core.views.get_pyq_storage")
+    def test_duplicate_prevention_cross_semester(self, mock_get_storage):
+        mock_storage = MagicMock()
+        mock_get_storage.return_value = mock_storage
+
+        # Paper already exists under semester 1
+        PYQ.objects.create(
+            branch="COMMONFORALLBRANCHES",
+            semester=1,
+            subject_code="BT11",
+            year=2023,
+            exam_session="April",
+            r2_object_key="pyqs/COMMONFORALLBRANCHES/bt11_2023.pdf",
+            uploaded_by=self.user,
+        )
+
+        self.client.force_authenticate(user=self.user)
+        pdf_file = SimpleUploadedFile("sample.pdf", self.pdf_bytes, content_type="application/pdf")
+
+        # Try uploading same paper under semester 2
+        res = self.client.post(
+            "/upload/",
+            {
+                "branch": "CommonForAllBranches",
+                "semester": "2",
+                "subject_code": "BT11",
+                "year": "2023",
+                "exam_session": "April",
+                "file": pdf_file,
+            },
+            format="multipart",
+        )
+        self.assertEqual(res.status_code, 409)
+
 
 
 

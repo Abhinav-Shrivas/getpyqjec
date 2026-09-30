@@ -197,23 +197,34 @@ class Command(BaseCommand):
                             defaults={'is_current': True},
                         )
 
-        # Select a few subjects to attach papers to
+        # Select subjects to attach papers to, explicitly including 1st-year common subjects
         target_subjects = []
+        # Ensure common 1st-year subjects are targeted
+        for code in ["BT11", "BT12", "BT14", "BT23"]:
+            sub = Subject.objects.filter(code=code).first()
+            if sub:
+                target_subjects.append(sub)
+
+        # Also add higher semester sample subjects
         for branch, sem in [("CSE", 3), ("CSE", 4), ("IT", 3), ("ME", 3)]:
             sub = Subject.objects.filter(branch=branch, semester=sem).first()
-            if sub:
+            if sub and sub not in target_subjects:
                 target_subjects.append(sub)
 
         pyq_count = 0
         paper_specs = [
-            (2023, "nov_dec"),
-            (2022, "nov_dec"),
-            (2021, "apr_may"),
+            (2023, "December"),
+            (2022, "December"),
+            (2021, "April"),
         ]
 
         for subj in target_subjects:
+            is_common = subj.semester <= 2 or subj.branch in ("CommonForAllBranches", "COMMONFORALLBRANCHES")
+            storage_branch = "COMMONFORALLBRANCHES" if is_common else subj.branch
+            db_branch = "COMMONFORALLBRANCHES" if is_common else subj.branch
+
             for year, session in paper_specs:
-                object_key = f"pyqs/{subj.branch}/sample_{subj.code}_{year}_{session}.pdf"
+                object_key = f"pyqs/{storage_branch}/sample_{subj.code}_{year}_{session}.pdf"
                 pdf_bytes = generate_sample_pdf(subj.name, subj.code, year, session)
                 file_hash = hashlib.sha256(pdf_bytes).hexdigest()
 
@@ -227,7 +238,7 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING(f"  Error uploading sample PDF for {subj.code}: {e}"))
 
                 PYQ.objects.update_or_create(
-                    branch=subj.branch,
+                    branch=db_branch,
                     semester=subj.semester,
                     subject_code=subj.code,
                     year=year,
