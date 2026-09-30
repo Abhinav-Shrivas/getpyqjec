@@ -105,7 +105,8 @@ SUBJECTS = {   'AIDS': {   'eighth': [   ['Professional Elective Course-III', 'A
                                                  'Electronics Engineering',
                                                  'BT14'],
                                              ['Engineering Graphics', 'BT15'],
-                                             ['Engineering Physics', 'BT12'],
+                                             ['Mathematics-II', 'BT21'],
+                                             ['Engineering Physics', 'BT22'],
                                              [   'Computer Programming and '
                                                  'Problem Solving',
                                                  'BT23'],
@@ -120,7 +121,8 @@ SUBJECTS = {   'AIDS': {   'eighth': [   ['Professional Elective Course-III', 'A
                                                   'Electronics Engineering',
                                                   'BT14'],
                                               ['Engineering Graphics', 'BT15'],
-                                              ['Engineering Physics', 'BT12'],
+                                              ['Mathematics-II', 'BT21'],
+                                              ['Engineering Physics', 'BT22'],
                                               [   'Computer Programming and '
                                                   'Problem Solving',
                                                   'BT23'],
