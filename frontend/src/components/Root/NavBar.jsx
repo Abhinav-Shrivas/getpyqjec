@@ -26,9 +26,11 @@ export default function NavBar() {
       if (!ticking) {
         ticking = true;
         requestAnimationFrame(() => {
-          const scrollY = window.scrollY || window.pageYOffset || 0;
-          // Hysteresis threshold prevents jitter and rapid toggling on mobile rubber-banding
-          const nextState = scrollY > (lastState ? 8 : 20);
+          const scrollY = Math.max(0, window.scrollY || window.pageYOffset || 0);
+          // Hysteresis threshold:
+          // Scroll down past 28px -> shrink to compact floating pill
+          // Scroll up past 14px -> smoothly expand back before hitting top boundary
+          const nextState = scrollY > (lastState ? 14 : 28);
 
           if (nextState !== lastState) {
             lastState = nextState;
