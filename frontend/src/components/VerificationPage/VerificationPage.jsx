@@ -598,7 +598,9 @@ export default function VerificationPage() {
                 <tbody>
                   {adminSubmissions.map((sub) => (
                     <tr key={sub.id} className={classes.tableRow}>
-                      <td className={classes.rnoCell}>{sub.user_rno}</td>
+                      <td>
+                        <span className={classes.rnoBadge}>{sub.user_rno}</span>
+                      </td>
                       <td>{sub.user_name}</td>
                       <td>
                         <span className={`${classes.badge} ${classes[sub.status]}`}>
