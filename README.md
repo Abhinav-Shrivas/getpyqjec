@@ -1,6 +1,8 @@
 <div align="center">
-  <img src="frontend/src/assets/logo.png" alt="GetPYQ JEC Logo" width="100" />
-  <h1>GetPYQJEC</h1>
+  <a href="https://www.getpyqjec.in">
+    <img src="frontend/src/assets/logo.png" alt="GetPYQ JEC Logo" width="100" />
+  </a>
+  <h1><a href="https://www.getpyqjec.in">GetPYQJEC</a></h1>
   <p><strong>The Community-Driven Academic Archive for JEC Students</strong></p>
   <p>Built by students, for students — an open platform to download custom PDF bundles and contribute verified question papers across all engineering branches.</p>
 
@@ -30,7 +32,10 @@
 ---
 
 ## 🌟 Overview
-**GetPYQJEC** is an advanced academic resource platform designed to centralize and organize college examination papers. It solves the chaotic spread of academic materials across messaging groups and drives by providing an ultra-fast, structured search, multi-year PDF compile-and-download system, and a verified community contribution workflow.
+**[GetPYQJEC](https://www.getpyqjec.in)** is an advanced academic resource platform designed to centralize and organize college examination papers. It solves the chaotic spread of academic materials across messaging groups and drives by providing an ultra-fast, structured search, multi-year PDF compile-and-download system, and a verified community contribution workflow.
+
+* 🌐 **Live Website**: [https://www.getpyqjec.in](https://www.getpyqjec.in)
+* ⚡ **Alternative Mirror**: [https://getpyqjec.vercel.app](https://getpyqjec.vercel.app/)
 
 ---
 
