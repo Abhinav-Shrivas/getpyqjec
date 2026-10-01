@@ -173,7 +173,7 @@ docker compose exec backend python manage.py seed_dev_data
    ```
 
 4. **Set up Environment Variables**
-   Copy `.env.example` to `.env` (no cloud keys needed for local dev):
+   Copy `.env.example` to `.env` (comes with `CONTRIBUTOR_MODE=True`, no cloud keys needed):
    * Windows: `copy .env.example .env`
    * macOS / Linux: `cp .env.example .env`
 

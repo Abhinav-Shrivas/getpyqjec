@@ -103,6 +103,11 @@ GetPYQ JEC is designed for seamless local onboarding:
 2. **File Storage (Cloudflare R2 Fallback)**: If R2 credentials are missing, uploads and downloads automatically save to your local `media/` directory.
 3. **Emails (Resend Fallback)**: In local development (`DEBUG=True`), OTP and verification emails are printed directly to your terminal console instead of attempting to send over the internet.
 
+### ⚙️ What is `CONTRIBUTOR_MODE`?
+In `.env.example`, you will notice `CONTRIBUTOR_MODE=True`.
+- **Automatic Fallback (Zero Config)**: Even if you do **not** set `CONTRIBUTOR_MODE=True`, the project automatically falls back to local SQLite, local disk storage, and console emails whenever cloud credentials (`DATABASE_URL`, `R2_ACCESS_KEY_ID`, `RESEND_API_KEY`) are omitted from `.env`.
+- **Force Local Override**: If you are a maintainer or contributor who *does* have production cloud credentials in your `.env` file, setting `CONTRIBUTOR_MODE=True` acts as a master switch—forcing Django to ignore remote NeonDB/R2 and use local SQLite and disk storage without needing to delete your remote keys.
+
 ---
 
 ## 🧪 Seeding Sample Data & Demo PDFs
