@@ -28,9 +28,6 @@
   contain: layout style;
 }
 
-.headerScrolled {
-  /* sticky anchor remains stable */
-}
 
 .navbar {
   position: relative;
@@ -136,7 +133,7 @@
   align-items: center;
   justify-content: center;
   color: #c084fc;
-  font-family: 'Outfit Medium', monospace;
+  font-family: 'Outfit Medium', sans-serif;
   font-weight: 600;
   font-size: 13.5px;
   letter-spacing: -0.5px;

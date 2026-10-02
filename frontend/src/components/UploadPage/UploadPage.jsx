@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import UploadForm from "./UploadForm";
 import { uploadData } from "../../http";
@@ -6,13 +6,11 @@ import { useAuth } from "../../store/AuthContext";
 import classes from "./UploadForm.module.css";
 
 export default function UploadDataPage() {
-  const { logout, user, isVerified, isAdmin, refreshVerificationStatus } = useAuth();
-  const [checkingVerification, setCheckingVerification] = useState(false);
+  const { user, isVerified, isAdmin, refreshVerificationStatus } = useAuth();
 
   useEffect(() => {
     // Refresh verification status on mount in case it was updated recently
-    setCheckingVerification(true);
-    refreshVerificationStatus().finally(() => setCheckingVerification(false));
+    refreshVerificationStatus();
   }, [refreshVerificationStatus]);
 
   async function uploadDataFn(formData) {

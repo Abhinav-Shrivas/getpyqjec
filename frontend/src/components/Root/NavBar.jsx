@@ -63,7 +63,7 @@ export default function NavBar() {
   const vStatus = user?.verification_status || "unverified";
 
   return (
-    <header className={`${classes.headerWrapper} ${isScrolled ? classes.headerScrolled : ""}`}>
+    <header className={classes.headerWrapper}>
       <nav className={`${classes.navbar} ${isScrolled ? classes.scrolled : ""}`}>
       <NavLink to="/" className={classes["download-link"]}>
         <div className={classes["logo-group"]}>
@@ -257,7 +257,7 @@ export default function NavBar() {
         ) : (
           <div className={classes["nav-item-wrapper"]}>
             <NavLink
-              to="profile?mode=login"
+              to="/profile?mode=login"
               className={({ isActive }) =>
                 `${classes["icon-btn"]} ${classes["profile-link"]} ${
                   isActive ? classes.active : ""

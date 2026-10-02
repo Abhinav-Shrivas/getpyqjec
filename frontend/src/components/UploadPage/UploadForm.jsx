@@ -76,7 +76,7 @@ export default function UploadFormPYQ({ uploadFn }) {
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = originalOverflow;
     };
-  }, [modalState, handleCloseModal]);
+  }, [modalState, handleCloseModal, isBusy]);
 
 
 
@@ -395,9 +395,10 @@ export default function UploadFormPYQ({ uploadFn }) {
   function handleReset(e) {
     e.preventDefault();
     setSelectedValues(initialState);
+    setCustomSubjectCode("");
+    setCustomSubjectName("");
     setErrorMessage("");
     if (fileInputRef.current) fileInputRef.current.value = "";
-    e.target.reset();
   }
 
   return (
@@ -414,7 +415,6 @@ export default function UploadFormPYQ({ uploadFn }) {
           onReset={handleReset}
           className={styles.form}
         >
-          {/* Row 1: Semester, Branch, Subject */}
           {/* Row 1: Semester, Branch, Subject */}
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
@@ -575,8 +575,9 @@ export default function UploadFormPYQ({ uploadFn }) {
               {/* Row 2: Year, Session, Upload Papers */}
               <div className={styles.formRow}>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Year</label>
+              <label htmlFor="year" className={styles.label}>Year</label>
               <CustomSelect
+                id="year"
                 name="year"
                 value={selectedValues.year}
                 placeholder="Select Year"

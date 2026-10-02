@@ -278,9 +278,9 @@ select option {
 /* File upload area */
 .fileInfo {
   background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(180, 160, 120, 0.2);
+  border: 1px solid rgba(180, 160, 220, 0.2);
   border-radius: 8px;
-  margin-top: 10px;
+  margin-top: 0;
   padding: 7px 10px;
   display: flex;
   align-items: center;
@@ -333,7 +333,7 @@ select option {
   gap: 10px;
   padding: 8px 10px;
   background-color: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(180, 160, 120, 0.15);
+  border: 1px solid rgba(180, 160, 220, 0.15);
   border-radius: 8px;
   cursor: grab;
   transition: background-color 0.2s ease, border-color 0.2s ease;
@@ -344,13 +344,13 @@ select option {
 }
 
 .imageItem.dragging {
-  background-color: rgba(180, 160, 120, 0.1);
-  border-color: rgba(180, 160, 120, 0.3);
+  background-color: rgba(180, 160, 220, 0.1);
+  border-color: rgba(180, 160, 220, 0.3);
   opacity: 0.7;
 }
 
 .dragHandle {
-  color: rgba(180, 160, 120, 0.6);
+  color: rgba(180, 160, 220, 0.6);
   font-size: 16px;
   user-select: none;
 }
@@ -360,7 +360,7 @@ select option {
   height: 40px;
   object-fit: cover;
   border-radius: 4px;
-  border: 1px solid rgba(180, 160, 120, 0.15);
+  border: 1px solid rgba(180, 160, 220, 0.15);
 }
 
 .imageFileName {
@@ -378,10 +378,10 @@ select option {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 0;
   padding: 10px 14px;
   background-color: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(180, 160, 120, 0.15);
+  border: 1px solid rgba(180, 160, 220, 0.15);
   border-radius: 8px;
 }
 
@@ -393,9 +393,9 @@ select option {
 }
 
 .editBtn {
-  background: rgba(180, 160, 120, 0.2);
+  background: rgba(180, 160, 220, 0.2);
   color: #EFEEE8;
-  border: 1px solid rgba(180, 160, 120, 0.3);
+  border: 1px solid rgba(180, 160, 220, 0.3);
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -405,7 +405,7 @@ select option {
 }
 
 .editBtn:hover {
-  background: rgba(180, 160, 120, 0.35);
+  background: rgba(180, 160, 220, 0.35);
 }
 
 /* Remove individual image button */
@@ -435,6 +435,7 @@ select option {
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -817,6 +818,7 @@ select option {
 /* Firefox */
 .manualYear[type="number"] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 @media (max-width: 520px) {
